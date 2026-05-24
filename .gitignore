@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+portfolio.db
+dist/
+.pytest_cache/
+.superpowers/
+logs/
+.ai-portfolio.pid
+.claude/
+

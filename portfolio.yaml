@@ -1,0 +1,35 @@
+server:
+  host: 127.0.0.1
+  port: 7860
+
+site:
+  title: Nabeel's AI Project Portfolio
+  meta_description: "AI project portfolio for applied machine learning, agents, automation, and product prototypes."
+  brand: AI Portfolio
+  brand_mark: AI
+  kicker: Applied AI Portfolio
+  headline: "Python AI projects for agents, automation, and analytics."
+  side_copy: "A public LinkedIn-ready portfolio focused on practical AI systems, workflow automation, and decision support prototypes."
+  intro_kicker: Portfolio Workspace
+  intro_headline: "Selected AI builds presented as concise case studies."
+  intro_copy: "Each project tile is designed for fast review: what it does, where AI is applied, the Python stack, and the next link a recruiter or collaborator would expect."
+  project_kicker: Project Index
+  project_heading: AI project tiles
+  status_label: Public showcase
+  linkedin_url: https://www.linkedin.com/in/ktnabeel
+
+stats:
+  - label: Projects
+    value: "6"
+  - label: Stack
+    value: Python
+  - label: Deploy
+    value: HF + Vercel
+
+capabilities:
+  - title: Agents
+    description: Research, routing, planning
+  - title: NLP
+    description: Reviews, claims, sentiment
+  - title: Decision Support
+    description: Finance, underwriting, recommendations
