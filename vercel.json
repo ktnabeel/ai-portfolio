@@ -1,5 +1,7 @@
 {
   "outputDirectory": "dist",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "installCommand": "",
+  "buildCommand": "",
+  "framework": null
 }
-
