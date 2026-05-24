@@ -2,6 +2,15 @@
 
 Python-based portfolio landing page for public AI project tiles. The live app is built with Gradio for Hugging Face Spaces, and the same project data can be exported as static HTML for Vercel.
 
+## Tabs
+
+- **Portfolio** — Landing page with project tiles, capability strip, glassmorphism UI
+- **Financial Agent** — Multi-agent portfolio decisions (Market Data, Technical, Fundamental, Sentiment, Risk, Orchestrator)
+- **Claim Processing** — Insurance claim automation pipeline
+- **Movie Recommendations** — Two-tower embeddings + SVD collaborative filtering + LLM-style preference parsing (TMDB)
+- **Sentiment Analyzer** — Product-review sentiment analysis on Amazon reviews
+- **Trading** — Multi-agent options trading via LangGraph + MCP paper-trading server + Black-Scholes pricing
+
 ## Run Locally
 
 ```powershell
