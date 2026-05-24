@@ -12,9 +12,160 @@ _TAB_LINKS: dict[str, str] = {
     "Product Review Sentiment Analyzer": "sentiment",
 }
 
-# Fallback URL for static deployments — points to the live HF Spaces app
-# where all interactive Gradio tabs are available.
-_SPACES_URL: str = "https://ktnabeel-nabeel-ai-portfolio.hf.space"
+# Rich inline detail content for each project — used in static (Vercel) deployment
+# to provide self-contained expandable cards with no external links.
+_PROJECT_DETAILS: dict[str, str] = {
+    "Trading Agents": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Architecture</h4>
+    <p>Multi-agent LangGraph pipeline: Security &rarr; Risk/Sentiment &rarr; Regime &rarr; Decision &rarr; Execution. Each agent contributes a specialized signal to the final trading decision.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Key Capabilities</h4>
+    <ul>
+      <li>Black-Scholes options pricing engine</li>
+      <li>MCP paper-trading server for safe simulation</li>
+      <li>Real-time market data via yfinance</li>
+      <li>CNN Fear &amp; Greed index scraper</li>
+      <li>Financial news sentiment scraping</li>
+      <li>Polygon.io options chain integration</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>LangGraph, LangChain (GPT-4o reasoning), yfinance, BeautifulSoup4, NumPy/SciPy, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>LLM agents analyze market regimes, assess risk-reward profiles, and generate structured trading decisions — all orchestrated through a state graph with human-in-the-loop review.</p>
+  </div>
+</div>""",
+    "Claim Processing": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Architecture</h4>
+    <p>Pipeline: Extract &rarr; Fraud Detection &rarr; Severity Classification &rarr; Routing. Free-text claims are parsed into structured data, analyzed for red flags, and automatically routed.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Key Capabilities</h4>
+    <ul>
+      <li>NLP extraction: claimant, amount, policy number, incident date</li>
+      <li>Pattern-based fraud detection with 10+ red-flag rules</li>
+      <li>Severity classification (Low &rarr; Critical) based on claim amount and type</li>
+      <li>Routing engine: Approve / Review / Deny / Escalate</li>
+      <li>Batch processing with summary statistics</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>Python, regex NLP, rule-based inference, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Automates the manual intake-review-route workflow. Extracts structured data from unstructured text, scores fraud risk heuristically, and recommends routing — reducing adjuster workload.</p>
+  </div>
+</div>""",
+    "Insurance Underwriting Agent": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Status</h4>
+    <p>Template — ready for customization with your underwriting rules and policy data.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Planned Capabilities</h4>
+    <ul>
+      <li>Risk review automation with configurable rule engine</li>
+      <li>Policy context retrieval and comparison</li>
+      <li>LLM-powered recommendation generation</li>
+      <li>Multi-factor risk scoring</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>Python, LLM agents, underwriting rules, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Agentic assistant that reviews applications against underwriting guidelines, surfaces risk factors, and generates structured recommendations for underwriter review.</p>
+  </div>
+</div>""",
+    "Product Review Sentiment Analyzer": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Architecture</h4>
+    <p>Pipeline: Data Loading &rarr; Sentiment Classification &rarr; Aggregation &rarr; Summarization. Processes product reviews individually and rolls up insights per product.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Key Capabilities</h4>
+    <ul>
+      <li>Per-review sentiment classification (Positive / Neutral / Negative)</li>
+      <li>Product-level aggregation with confidence scoring</li>
+      <li>Keyword extraction from review text</li>
+      <li>Amazon review dataset integration (sampled)</li>
+      <li>Visual sentiment distribution charts</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>Python, scikit-learn, HuggingFace datasets, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Transforms unstructured customer reviews into structured sentiment insights. Useful for product teams tracking feedback trends and identifying pain points at scale.</p>
+  </div>
+</div>""",
+    "Finance Planning": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Status</h4>
+    <p>Template — ready for customization with your financial models and planning workflows.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Planned Capabilities</h4>
+    <ul>
+      <li>Budget analysis and scenario modeling</li>
+      <li>Financial goal tracking with progress visualization</li>
+      <li>LLM-powered planning assistant</li>
+      <li>Cash flow projections</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>Python, analytics, LLM workflows, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Conversational planning assistant that helps users model financial scenarios, track goals, and get AI-generated recommendations based on their financial data.</p>
+  </div>
+</div>""",
+    "Movie Recommendations": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Architecture</h4>
+    <p>Ensemble recommender: Two-Tower Embeddings + SVD Collaborative Filtering + Popularity baseline. LLM-style preference parser extracts structured tastes from free-text input.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Key Capabilities</h4>
+    <ul>
+      <li>Two-tower neural model (MovieEmbedder + UserEmbedder)</li>
+      <li>SVD matrix factorization for collaborative filtering</li>
+      <li>LLM-style preference parsing from natural language</li>
+      <li>TMDB API integration with rate limiting and image CDN</li>
+      <li>Fallback sample dataset when API key not configured</li>
+      <li>Weighted ensemble blending multiple signal sources</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>Python, scikit-learn, NumPy, TMDB API, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Translates natural-language taste descriptions (\"I love dark sci-fi like Blade Runner\") into structured embeddings, then blends content-based and collaborative signals for personalized recommendations.</p>
+  </div>
+</div>""",
+}
 
 
 def _tab_link(target: str, label: str, class_name: str = "") -> str:
@@ -40,6 +191,32 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
 </head>
 <body>
   {page}
+  <script>
+    function toggleExpand(index) {{
+      var card = document.getElementById('card-' + index);
+      var btn = card.querySelector('.expand-toggle');
+      var isExpanded = card.classList.contains('expanded');
+      // Close all other expanded cards
+      document.querySelectorAll('.project-card.expanded').forEach(function(c) {{
+        if (c !== card) {{
+          c.classList.remove('expanded');
+          var b = c.querySelector('.expand-toggle');
+          if (b) b.setAttribute('aria-expanded', 'false');
+        }}
+      }});
+      if (isExpanded) {{
+        card.classList.remove('expanded');
+        btn.setAttribute('aria-expanded', 'false');
+      }} else {{
+        card.classList.add('expanded');
+        btn.setAttribute('aria-expanded', 'true');
+        // Scroll into view if needed
+        setTimeout(function() {{
+          card.scrollIntoView({{behavior: 'smooth', block: 'nearest'}});
+        }}, 100);
+      }}
+    }}
+  </script>
 </body>
 </html>"""
 
@@ -128,17 +305,28 @@ def _render_project_card(index: int, project: Project, mode: str) -> str:
     tab_label = _TAB_LINKS.get(project.title)
     if mode == "gradio" and not project.github_url and not project.demo_url and project.status == "Built" and tab_label:
         links.append(_tab_link(tab_label, "Demo"))
-    elif mode == "static" and not project.github_url and not project.demo_url and project.status == "Built" and tab_label:
-        # Static deployment: link to the live HF Spaces app where interactive tabs work.
-        links.append(
-            f'<a href="{escape(_SPACES_URL)}"'
-            ' target="_blank" rel="noreferrer">Live Demo</a>'
-        )
+
+    # Static deployment: expandable inline details instead of external links.
+    expand_html = ""
+    if mode == "static":
+        details = _PROJECT_DETAILS.get(project.title, "")
+        if details:
+            expand_html = f"""
+          <div class="project-expand" id="expand-{index}">
+            {details}
+          </div>"""
+            links.append(
+                f'<button class="expand-toggle" onclick="toggleExpand({index})"'
+                f' aria-expanded="false" aria-controls="expand-{index}">'
+                f'Details</button>'
+            )
+        elif not project.github_url and not project.demo_url:
+            links.append('<span class="muted">Links coming soon</span>')
 
     link_html = "".join(links) or '<span class="muted">Links coming soon</span>'
 
     return f"""
-        <article class="project-card">
+        <article class="project-card" id="card-{index}">
           <div class="project-number">{index:02d}</div>
           <div class="project-main">
             <div class="project-meta">
@@ -150,6 +338,7 @@ def _render_project_card(index: int, project: Project, mode: str) -> str:
             <div class="tag-row">{tags}</div>
           </div>
           <div class="project-links">{link_html}</div>
+          {expand_html}
         </article>
 """
 
@@ -482,6 +671,92 @@ h1, h2, h3, p { margin-top: 0; }
   font-size: 14px;
 }
 .muted { color: var(--theme-muted); font-weight: 750; }
+
+/* ===== Expandable project card details ===== */
+.expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--theme-line);
+  border-radius: 8px;
+  padding: 8px 16px;
+  background: var(--theme-surface);
+  color: var(--theme-green);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s ease, border-color .2s ease, color .2s ease, transform .15s ease;
+}
+.expand-toggle::after {
+  content: "▸";
+  font-size: 10px;
+  transition: transform .3s ease;
+}
+.expand-toggle:hover {
+  background: var(--theme-green);
+  border-color: var(--theme-green);
+  color: #fff;
+}
+.expand-toggle:active {
+  transform: scale(.95);
+}
+.project-card.expanded .expand-toggle::after {
+  transform: rotate(90deg);
+}
+.project-expand {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  transition: grid-template-rows .4s cubic-bezier(.4,0,.2,1), padding .35s ease, border-color .35s ease;
+  border-top: 0px solid transparent;
+}
+.project-card.expanded .project-expand {
+  grid-template-rows: 1fr;
+  border-top: 1px solid var(--theme-line);
+  margin-top: 8px;
+  padding-top: 20px;
+}
+.project-expand > :first-child {
+  min-height: 0;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.detail-section h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 850;
+  color: var(--theme-green);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.detail-section p,
+.detail-section ul {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.detail-section ul {
+  padding-left: 18px;
+  list-style: "— ";
+}
+.detail-section ul li {
+  margin-bottom: 4px;
+}
+@media (max-width: 720px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .project-card.expanded .project-expand {
+    padding-top: 14px;
+  }
+}
+
 .empty-state {
   border: 1px solid var(--theme-line);
   border-radius: 12px;
