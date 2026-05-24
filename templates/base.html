@@ -16,11 +16,7 @@
     </div>
     <nav aria-label="Main navigation">
       <a href="/" class="{% if active_page == 'portfolio' %}nav-active{% endif %}">Portfolio</a>
-      <a href="/financial" class="nav-financial {% if active_page == 'financial' %}nav-active{% endif %}">Financial Agent</a>
-      <a href="/claims" class="nav-claims {% if active_page == 'claims' %}nav-active{% endif %}">Claims</a>
-      <a href="/movies" class="nav-movies {% if active_page == 'movies' %}nav-active{% endif %}">Movies</a>
-      <a href="/sentiment" class="nav-sentiment {% if active_page == 'sentiment' %}nav-active{% endif %}">Sentiment</a>
-      <a href="/trading" class="nav-trading {% if active_page == 'trading' %}nav-active{% endif %}">Trading</a>
+      <a href="/claims" class="nav-claims {% if active_page == 'claims' %}nav-active{% endif %}">Claim Processing</a>
       <a href="{{ config.site.linkedin_url }}" target="_blank" rel="noreferrer">Contact</a>
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme" title="Toggle theme">
         <span class="theme-icon-light">☀️</span>

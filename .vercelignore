@@ -1,0 +1,18 @@
+# Vercel deployment exclusions
+.venv/
+__pycache__/
+*.py[cod]
+.env
+portfolio.db
+dist/
+.pytest_cache/
+.superpowers/
+.claude/
+logs/
+.ai-portfolio.pid
+
+# Unused heavy modules (lean deployment only uses Claim Processing + Portfolio)
+portfolio/financial/
+portfolio/movie_recommender/
+portfolio/sentiment/
+portfolio/trading/
