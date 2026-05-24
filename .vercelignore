@@ -1,5 +1,10 @@
 # Vercel deployment exclusions
 .venv/
+
+# Prevent Vercel from auto-detecting pyproject.toml (which has all heavy deps).
+# Vercel must use requirements.txt only (6 lightweight packages).
+pyproject.toml
+uv.lock
 __pycache__/
 *.py[cod]
 .env
