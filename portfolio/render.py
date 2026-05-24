@@ -12,6 +12,10 @@ _TAB_LINKS: dict[str, str] = {
     "Product Review Sentiment Analyzer": "sentiment",
 }
 
+# Fallback URL for static deployments — points to the live HF Spaces app
+# where all interactive Gradio tabs are available.
+_SPACES_URL: str = "https://ktnabeel-nabeel-ai-portfolio.hf.space"
+
 
 def _tab_link(target: str, label: str, class_name: str = "") -> str:
     class_attr = f' class="{class_name}"' if class_name else ""
@@ -124,6 +128,12 @@ def _render_project_card(index: int, project: Project, mode: str) -> str:
     tab_label = _TAB_LINKS.get(project.title)
     if mode == "gradio" and not project.github_url and not project.demo_url and project.status == "Built" and tab_label:
         links.append(_tab_link(tab_label, "Demo"))
+    elif mode == "static" and not project.github_url and not project.demo_url and project.status == "Built" and tab_label:
+        # Static deployment: link to the live HF Spaces app where interactive tabs work.
+        links.append(
+            f'<a href="{escape(_SPACES_URL)}"'
+            ' target="_blank" rel="noreferrer">Live Demo</a>'
+        )
 
     link_html = "".join(links) or '<span class="muted">Links coming soon</span>'
 
