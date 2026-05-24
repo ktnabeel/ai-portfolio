@@ -1,7 +1,5 @@
 {
-  "outputDirectory": "dist",
-  "cleanUrls": true,
-  "installCommand": "",
-  "buildCommand": "",
-  "framework": null
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
 }

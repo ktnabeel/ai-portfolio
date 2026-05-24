@@ -1,0 +1,43 @@
+<!-- Trading -->
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section">
+  <h1>🤖 Multi-Agent Options Trading</h1>
+  <p class="page-subtitle">5 specialized AI agents orchestrated by LangGraph — from symbol to execution</p>
+
+  <div class="trading-layout">
+    <div class="trading-sidebar">
+      <h3>🎯 Trading Target</h3>
+      <form method="post" action="/trading">
+        <label class="form-label" for="symbol">Stock Symbol</label>
+        <input class="form-input" type="text" id="symbol" name="symbol"
+               value="{{ symbol|default('AAPL') }}" placeholder="e.g. AAPL, MSFT, NVDA, TSLA, SPY">
+        <p class="form-hint">Enter any US stock symbol with options</p>
+        <button class="btn-primary btn-full" type="submit">🚀 Run Multi-Agent Analysis</button>
+      </form>
+
+      <div class="agent-flow">
+        <div class="flow-title">📊 Agent Flow</div>
+        <div class="flow-step">🔍 1. Security Agent → Identify</div>
+        <div class="flow-step" style="color:var(--trading-teal)">🌐 2. Risk/Sentiment → Fear & Greed</div>
+        <div class="flow-step" style="color:var(--trading-amber)">🔄 3. Regime → Bull/Bear/Neutral</div>
+        <div class="flow-step">📊 4. Options Chain → Contracts</div>
+        <div class="flow-step" style="color:var(--trading-purple)">🎯 5. Decision → Strategy</div>
+        <div class="flow-step" style="color:var(--trading-green)">💸 6. Execution → MCP Trade</div>
+      </div>
+    </div>
+
+    <div class="trading-main">
+      {% if result_html %}
+      <div class="results-area">{{ result_html|safe }}</div>
+      {% else %}
+      <div class="trading-placeholder">
+        <div class="placeholder-icon">🤖</div>
+        <div class="placeholder-title">Ready to Trade</div>
+        <div class="placeholder-text">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 5 agents</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

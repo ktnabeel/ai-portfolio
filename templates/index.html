@@ -1,0 +1,57 @@
+<!-- Portfolio landing page -->
+{% extends "base.html" %}
+{% block content %}
+
+<section class="intro">
+  <p class="eyebrow">{{ config.site.intro_kicker }}</p>
+  <h2>{{ config.site.intro_headline }}</h2>
+  <p>{{ config.site.intro_copy }}</p>
+</section>
+
+<section class="capability-strip" aria-label="Capabilities">
+  {% for item in config.capabilities %}
+  <div><strong>{{ item.title }}</strong><span>{{ item.description }}</span></div>
+  {% endfor %}
+</section>
+
+<section id="projects" class="projects-section">
+  <div class="section-heading">
+    <p class="eyebrow">{{ config.site.project_kicker }}</p>
+    <h2>{{ config.site.project_heading }}</h2>
+  </div>
+  {% if projects %}
+  <div class="project-list">
+    {% for p in projects %}
+    <article class="project-card" id="card-{{ loop.index }}">
+      <div class="project-number">{{ '%02d'|format(loop.index) }}</div>
+      <div class="project-main">
+        <div class="project-meta"><span>{{ p.status }}</span><span>{{ p.tech_stack }}</span></div>
+        <h3>{{ p.title }}</h3>
+        <p>{{ p.outcome }}</p>
+        <div class="tag-row">{% for tag in p.tags %}<span>{{ tag }}</span>{% endfor %}</div>
+      </div>
+      <div class="project-links">
+        {% if p.github_url %}<a href="{{ p.github_url }}" target="_blank" rel="noreferrer">GitHub</a>{% endif %}
+        {% if p.demo_url %}<a href="{{ p.demo_url }}" target="_blank" rel="noreferrer">Demo</a>{% endif %}
+        {% if p.title in project_details %}
+        <button class="expand-toggle" onclick="toggleExpand({{ loop.index }})" aria-expanded="false">Details</button>
+        {% elif not p.github_url and not p.demo_url %}
+        <span class="muted">Links coming soon</span>
+        {% endif %}
+      </div>
+      {% if p.title in project_details %}
+      <div class="project-expand" id="expand-{{ loop.index }}">{{ project_details[p.title]|safe }}</div>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state"><h3>Real project entries are ready to be added.</h3><p>This portfolio is intentionally empty until real AI projects are added.</p></div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleExpand(e){var n=document.getElementById('card-'+e),t=n.querySelector('.expand-toggle'),o=n.classList.contains('expanded');document.querySelectorAll('.project-card.expanded').forEach(function(e){e!==n&&(e.classList.remove('expanded'),e.querySelector('.expand-toggle').setAttribute('aria-expanded','false'))}),o?(n.classList.remove('expanded'),t.setAttribute('aria-expanded','false')):(n.classList.add('expanded'),t.setAttribute('aria-expanded','true'),setTimeout(function(){n.scrollIntoView({behavior:'smooth',block:'nearest'})},100))}
+</script>
+{% endblock %}

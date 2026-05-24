@@ -1,0 +1,66 @@
+<!-- Sentiment Analyzer -->
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section">
+  <h1>🍽️ Business Review Sentiment Analyzer</h1>
+  <p class="page-subtitle">Explore 1,000 businesses from real Yelp reviews. Pick a domain, then select up to two businesses to compare sentiment side by side — no API keys, fully local.</p>
+
+  <form method="get" action="/sentiment" id="domain-form" style="margin-bottom:12px">
+    <label class="form-label" for="domain">1️⃣ Choose a Business Domain</label>
+    <select class="form-select" id="domain" name="domain" onchange="onDomainChange()">
+      <option value="">— All Domains —</option>
+      {% for d in domains %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+    </select>
+  </form>
+
+  <form method="post" action="/sentiment">
+    <div class="form-row">
+      <div class="form-col-grow">
+        <label class="form-label" for="business_a">2️⃣ Business A</label>
+        <select class="form-select" id="business_a" name="business_a">
+          <option value="">— Select a business —</option>
+          {% for b in businesses %}
+          <option value="{{ b }}" {% if selected_a and selected_a == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-col-grow">
+        <label class="form-label" for="business_b">3️⃣ Business B</label>
+        <select class="form-select" id="business_b" name="business_b">
+          <option value="">— Select a business —</option>
+          {% for b in businesses %}
+          <option value="{{ b }}" {% if selected_b and selected_b == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" type="submit" name="action" value="analyze_a">📊 Analyze A</button>
+      <button class="btn-primary" type="submit" name="action" value="compare">⚖️ Compare Both</button>
+      <button class="btn-secondary" type="submit" name="action" value="analyze_b">📊 Analyze B</button>
+    </div>
+  </form>
+
+  {% if result_html %}<div class="results-area">{{ result_html|safe }}</div>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function onDomainChange() {
+  var domain = document.getElementById('domain').value;
+  fetch('/api/sentiment/businesses?domain=' + encodeURIComponent(domain))
+    .then(r => r.json())
+    .then(names => {
+      var selA = document.getElementById('business_a');
+      var selB = document.getElementById('business_b');
+      var vA = selA.value, vB = selB.value;
+      [selA, selB].forEach(function(s) { s.innerHTML = '<option value="">— Select a business —</option>'; });
+      names.forEach(function(n) {
+        selA.innerHTML += '<option value="' + n + '">' + n + '</option>';
+        selB.innerHTML += '<option value="' + n + '">' + n + '</option>';
+      });
+      selA.value = vA; selB.value = vB;
+    });
+}
+</script>
+{% endblock %}

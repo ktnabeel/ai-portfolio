@@ -1,0 +1,38 @@
+<!-- Movie Recommendations -->
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section">
+  <h1>🎬 AI Movie Recommendations</h1>
+  <p class="page-subtitle">Describe what you're in the mood for — genres, actors, directors, era, vibe — and get personalized picks powered by neural embeddings, collaborative filtering, and LLM-style preference understanding.</p>
+
+  <form method="post" action="/movies" class="movie-form">
+    <div class="form-row">
+      <div class="form-col-grow">
+        <label class="form-label" for="query">What kind of movie are you looking for?</label>
+        <textarea class="form-input" id="query" name="query" rows="3"
+                  placeholder="e.g. I want dark sci-fi movies like Inception and Interstellar, directed by Christopher Nolan, with mind-bending plots — nothing before 2005, rated 7.5+">{{ query|default('') }}</textarea>
+      </div>
+      <div class="form-col-fixed">
+        <label class="form-label" for="top_k">Results</label>
+        <select class="form-select" id="top_k" name="top_k">
+          {% for n in [3,5,8,12,16,20] %}<option value="{{ n }}" {% if top_k|default(8)|int == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+        </select>
+        <button class="btn-primary" type="submit">🔍 Find Movies</button>
+      </div>
+    </div>
+  </form>
+
+  {% if result_html %}<div class="results-area">{{ result_html|safe }}</div>{% endif %}
+
+  <div class="section-divider"></div>
+  <h3>💡 Try these queries:</h3>
+  <ul class="query-suggestions">
+    <li><em>"Feel-good animated movies for family movie night"</em></li>
+    <li><em>"Dark psychological thrillers like Fight Club, with a twist ending"</em></li>
+    <li><em>"Sci-fi epics from the 2010s directed by Christopher Nolan or Denis Villeneuve"</em></li>
+    <li><em>"Crime dramas with Al Pacino or Robert De Niro, similar to The Godfather"</em></li>
+    <li><em>"Inspiring true-story movies about overcoming adversity, rated above 8"</em></li>
+    <li><em>"Indie coming-of-age films from the 90s, not too dark"</em></li>
+  </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{ config.site.meta_description }}">
+  <title>{{ config.site.title }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="page-{{ active_page }}">
+
+  <header class="top-bar">
+    <div>
+      <span class="status-dot"></span>
+      {{ config.site.status_label }}
+    </div>
+    <nav aria-label="Main navigation">
+      <a href="/" class="{% if active_page == 'portfolio' %}nav-active{% endif %}">Portfolio</a>
+      <a href="/financial" class="nav-financial {% if active_page == 'financial' %}nav-active{% endif %}">Financial Agent</a>
+      <a href="/claims" class="nav-claims {% if active_page == 'claims' %}nav-active{% endif %}">Claims</a>
+      <a href="/movies" class="nav-movies {% if active_page == 'movies' %}nav-active{% endif %}">Movies</a>
+      <a href="/sentiment" class="nav-sentiment {% if active_page == 'sentiment' %}nav-active{% endif %}">Sentiment</a>
+      <a href="/trading" class="nav-trading {% if active_page == 'trading' %}nav-active{% endif %}">Trading</a>
+      <a href="{{ config.site.linkedin_url }}" target="_blank" rel="noreferrer">Contact</a>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme" title="Toggle theme">
+        <span class="theme-icon-light">☀️</span>
+        <span class="theme-icon-dark">🌙</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="app-footer">
+    <span>{{ config.site.brand }}</span>
+    <span class="footer-muted">{{ config.site.kicker }}</span>
+  </footer>
+
+  <script>
+    (function() {
+      var t;
+      try { t = localStorage.getItem('theme'); } catch(e) {}
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      else if (window.matchMedia('(prefers-color-scheme:dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+    function toggleTheme() {
+      var h = document.documentElement;
+      var t = h.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      h.setAttribute('data-theme', t);
+      try { localStorage.setItem('theme', t); } catch(e) {}
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

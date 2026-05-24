@@ -1,0 +1,41 @@
+<!-- Financial Agent -->
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section">
+  <h1>📈 Multi-Agent Financial Analysis</h1>
+  <p class="page-subtitle">Analyze stocks using 5 specialized AI agents: Market Data, Technical, Fundamental, Sentiment, and Risk.</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('single')">📊 Single Stock</button>
+    <button class="tab-btn" onclick="showTab('portfolio')">📋 Portfolio Risk</button>
+  </div>
+
+  <div id="tab-single" class="tab-panel active">
+    <form method="post" action="/financial">
+      <label class="form-label" for="ticker">Stock Ticker</label>
+      <input class="form-input" type="text" id="ticker" name="ticker"
+             value="{{ ticker|default('AAPL') }}" placeholder="e.g. AAPL, TSLA, MSFT">
+      <button class="btn-primary" type="submit">🔍 Analyze</button>
+    </form>
+  </div>
+
+  <div id="tab-portfolio" class="tab-panel">
+    <p class="muted">Enter one holding per line: <code>TICKER SHARES AVG_PRICE</code></p>
+    <form method="post" action="/financial/portfolio">
+      <textarea class="form-textarea" name="holdings_text" rows="6"
+                placeholder="AAPL 10 180.50&#10;MSFT 5 420.00&#10;TSLA 3 250.00">{{ holdings_text|default('') }}</textarea>
+      <button class="btn-primary" type="submit">📊 Analyze Portfolio</button>
+    </form>
+  </div>
+
+  {% if result_html %}
+  <div class="results-area">{{ result_html|safe }}</div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function showTab(t){var e=document.querySelectorAll('.tab-panel'),n=document.querySelectorAll('.tab-btn');e.forEach(function(e){e.classList.remove('active')}),n.forEach(function(e){e.classList.remove('active')}),document.getElementById('tab-'+t).classList.add('active'),event.target.classList.add('active')}
+{% if show_portfolio %}showTab('portfolio');{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,41 @@
+<!-- Claim Processing -->
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section">
+  <h1>📋 AI-Powered Claim Processing</h1>
+  <p class="page-subtitle">Extract claim details, assess fraud risk, classify severity, and route decisions from free-text descriptions.</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('single')">📝 Single Claim</button>
+    <button class="tab-btn" onclick="showTab('batch')">📊 Batch Processing</button>
+  </div>
+
+  <div id="tab-single" class="tab-panel active">
+    <p class="muted">Enter a claim description. The system extracts claimant info, type, amount, detects fraud indicators, assesses severity, and recommends routing.</p>
+    <form method="post" action="/claims">
+      <input type="hidden" name="mode" value="single">
+      <textarea class="form-textarea" name="claim_text" rows="8"
+                placeholder="Claimant: John Smith&#10;Policy: POL-A12345&#10;My car was rear-ended on 3/15/2024 at a stoplight. The bumper and tail light are damaged. Repair estimate is $4,200. No witnesses.">{{ claim_text|default('') }}</textarea>
+      <button class="btn-primary" type="submit">🔍 Process Claim</button>
+    </form>
+  </div>
+
+  <div id="tab-batch" class="tab-panel">
+    <p class="muted">Process multiple claims at once. Separate each claim with a blank line or <code>---</code>.</p>
+    <form method="post" action="/claims">
+      <input type="hidden" name="mode" value="batch">
+      <textarea class="form-textarea" name="claim_text" rows="10"
+                placeholder="Claimant: Alice Brown. Auto accident. $2,500.&#10;&#10;---&#10;&#10;Claimant: Bob Wilson. Home water damage. $45,000. Urgent!">{{ claim_text|default('') }}</textarea>
+      <button class="btn-primary" type="submit">📊 Process Batch</button>
+    </form>
+  </div>
+
+  {% if result_html %}<div class="results-area">{{ result_html|safe }}</div>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function showTab(t){var e=document.querySelectorAll('.tab-panel'),n=document.querySelectorAll('.tab-btn');e.forEach(function(e){e.classList.remove('active')}),n.forEach(function(e){e.classList.remove('active')}),document.getElementById('tab-'+t).classList.add('active'),event.target.classList.add('active')}
+{% if mode == 'batch' %}showTab('batch');{% endif %}
+</script>
+{% endblock %}
