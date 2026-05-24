@@ -1,3 +1,14 @@
+---
+title: AI Portfolio
+emoji: 🤖
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 5.0.0
+app_file: app.py
+pinned: false
+---
+
 # AI Project Portfolio
 
 Python-based portfolio landing page for public AI project tiles. The live app is built with Gradio for Hugging Face Spaces, and the same project data can be exported as static HTML for Vercel.
