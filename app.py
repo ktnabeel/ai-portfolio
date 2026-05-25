@@ -109,25 +109,25 @@ def build_app() -> gr.Blocks:
         title=config["site"]["title"],
     ) as demo:
         with gr.Tabs():
-            with gr.TabItem("Portfolio", render_children=True):
+            with gr.TabItem("Portfolio"):
                 gr.HTML(
                     render_page(get_projects(DB_PATH), mode="gradio", config=config),
                     js_on_load=PORTFOLIO_NAV_JS,
                 )
 
-            with gr.TabItem("Financial Agent", render_children=True):
+            with gr.TabItem("Financial Agent"):
                 render_financial_tab()
 
-            with gr.TabItem("Claim Processing", render_children=True):
+            with gr.TabItem("Claim Processing"):
                 render_claim_tab()
 
-            with gr.TabItem("Movie Recommendations", render_children=True):
+            with gr.TabItem("Movie Recommendations"):
                 render_movie_tab()
 
-            with gr.TabItem("Sentiment Analyzer", render_children=True):
+            with gr.TabItem("Sentiment Analyzer"):
                 render_sentiment_tab()
 
-            with gr.TabItem("Trading", render_children=True):
+            with gr.TabItem("Trading"):
                 render_trading_tab()
 
     return demo
