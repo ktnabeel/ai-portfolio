@@ -112,7 +112,7 @@ def build_app() -> gr.Blocks:
             with gr.TabItem("Portfolio"):
                 gr.HTML(
                     render_page(get_projects(DB_PATH), mode="gradio", config=config),
-                    js_on_load=PORTFOLIO_NAV_JS,
+                    js=PORTFOLIO_NAV_JS,
                 )
 
             with gr.TabItem("Financial Agent"):
