@@ -177,8 +177,42 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
     config = config or load_config()
     site = config["site"]
     page = _render_shell(_render_project_grid(projects, mode=mode), config, mode=mode)
+    nav_js = """
+    (function() {
+      const initNav = function() {
+        document.addEventListener('click', function(event) {
+          const link = event.target.closest('[data-tab-target]');
+          if (!link) return;
+          event.preventDefault();
+          const labels = {
+            financial: 'Financial Agent',
+            trading: 'Trading',
+            claim: 'Claim Processing',
+            movie: 'Movie Recommendations',
+            sentiment: 'Sentiment Analyzer'
+          };
+          const label = labels[link.dataset.tabTarget];
+          if (!label) return;
+          const tabs = Array.from(document.querySelectorAll('button, [role="tab"]'));
+          const target = tabs.find(function(tab) {
+            return tab.textContent && tab.textContent.trim().indexOf(label) >= 0;
+          });
+          if (target) {
+            target.click();
+            target.scrollIntoView({block: 'nearest', inline: 'nearest'});
+          }
+        });
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initNav);
+      } else {
+        initNav();
+      }
+    })();
+    """
+
     if mode == "gradio":
-        return f"<style>{_css()}</style><script>(function(){{var t;try{{t=localStorage.getItem('theme')}}catch(e){{}}if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');}})();</script>{page}"
+        return f"<style>{_css()}</style><script>(function(){{var t;try{{t=localStorage.getItem('theme')}}catch(e){{}}if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');}})(); {nav_js}</script>{page}"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -373,20 +407,20 @@ def _css() -> str:
   color-scheme: dark;
   --theme-bg: #0d1117;
   --theme-panel: #161b22;
-  --theme-ink: #c9d1d9;
-  --theme-muted: #b0b8c1;
+  --theme-ink: #e6edf3;
+  --theme-muted: #8b949e;
   --theme-line: #30363d;
   --theme-green: #3fb950;
   --theme-blue: #58a6ff;
   --theme-amber: #d2991d;
-  --theme-surface: #1c2128;
+  --theme-surface: #21262d;
   --theme-tag-bg: #21262d;
-  --theme-tag-text: #e6edf3;
-  --theme-shadow: rgba(0,0,0,.20);
-  --theme-shadow-hover: rgba(0,0,0,.35);
-  --theme-card-hover-border: rgba(63,185,80,.35);
-  --theme-status-glow: rgba(63,185,80,.12);
-  --theme-green-hover: #2ea844;
+  --theme-tag-text: #c9d1d9;
+  --theme-shadow: rgba(0,0,0,.40);
+  --theme-shadow-hover: rgba(0,0,0,.60);
+  --theme-card-hover-border: rgba(63,185,80,.45);
+  --theme-status-glow: rgba(63,185,80,.2);
+  --theme-green-hover: #4fdc63;
   --theme-blue-hover: #79b8ff;
   --theme-panel-rgb: 22, 27, 34;
 }
@@ -774,15 +808,30 @@ h1, h2, h3, p { margin-top: 0; }
 }
 @media (max-width: 720px) {
   .workspace {
-    padding: 14px;
+    padding: 12px;
   }
-  .top-bar,
+  .top-bar {
+    align-items: stretch;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    padding: 16px;
+    gap: 12px;
+  }
+  .top-bar div {
+    margin-bottom: 0;
+  }
+  .top-bar nav {
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+  }
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
   }
   .intro {
-    padding: 50px 0 30px;
+    padding: 40px 0 30px;
   }
   .intro h2 {
     font-size: 42px;
@@ -790,9 +839,11 @@ h1, h2, h3, p { margin-top: 0; }
   .project-card {
     grid-template-columns: 1fr;
     align-items: start;
+    padding: 20px;
   }
   .project-links {
     justify-content: flex-start;
+    margin-top: 12px;
   }
 }
 """
