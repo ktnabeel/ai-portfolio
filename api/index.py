@@ -14,7 +14,7 @@ from html import escape
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # ── Project root ────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -27,9 +27,23 @@ static_dir = BASE_DIR / "static"
 static_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-# ── Template engine ─────────────────────────────────────────────────────────
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-templates.env.autoescape = True
+# ── Template engine (raw Jinja2 — bypasses Starlette Jinja2Templates bug) ──
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(BASE_DIR / "templates")),
+    autoescape=select_autoescape(["html"]),
+)
+
+
+def _render(name: str, context: dict) -> HTMLResponse:
+    """Render a Jinja2 template and return an HTMLResponse.
+
+    Uses raw Jinja2 Environment to avoid Starlette's Jinja2Templates bug
+    (TypeError: unhashable type: 'dict' in Jinja2 3.1.6 + Starlette).
+    """
+    template = _jinja_env.get_template(name)
+    # Jinja2 autoescapes by default for .html files; mark safe strings explicitly
+    html = template.render(**context)
+    return HTMLResponse(html)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -60,7 +74,7 @@ async def portfolio(request: Request):
     from portfolio.render import _PROJECT_DETAILS
     config = _load_config()
     projects = _get_projects()
-    return templates.TemplateResponse("index.html", {
+    return _render("index.html", {
         "request": request,
         "config": config,
         "projects": projects,
@@ -75,7 +89,7 @@ async def portfolio(request: Request):
 
 @app.get("/claims", response_class=HTMLResponse)
 async def claims_form(request: Request):
-    return templates.TemplateResponse("claims.html", {
+    return _render("claims.html", {
         "request": request,
         "config": _load_config(),
         "active_page": "claims",
@@ -93,7 +107,7 @@ async def claims_process(
         result_html = _run_batch_claims(claim_text)
     else:
         result_html = _run_single_claim(claim_text)
-    return templates.TemplateResponse("claims.html", {
+    return _render("claims.html", {
         "request": request,
         "config": _load_config(),
         "active_page": "claims",
