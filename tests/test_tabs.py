@@ -10,7 +10,7 @@ import gradio as gr
 
 from portfolio.db import get_projects, init_db
 from portfolio.financial import render_financial_tab
-from portfolio.claim_processing import render_claim_tab
+from portfolio.claim_processing.render import render_claim_tab
 from portfolio.movie_recommender import render_movie_tab
 from portfolio.sentiment import render_sentiment_tab
 from portfolio.render import render_page
@@ -79,7 +79,7 @@ def test_trading_css_exported() -> None:
 def test_all_tab_css_exports_are_strings() -> None:
     """Every tab's CSS export is a non-empty string."""
     from portfolio.financial import DARK_CSS
-    from portfolio.claim_processing import CLAIM_DARK_CSS
+    from portfolio.claim_processing.render import CLAIM_DARK_CSS
     from portfolio.movie_recommender import MOVIE_CSS
     from portfolio.sentiment import SENTIMENT_CSS
     from portfolio.trading.ui import TRADING_CSS

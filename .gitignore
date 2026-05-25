@@ -10,3 +10,5 @@ logs/
 .ai-portfolio.pid
 .claude/
 
+
+.vercel
