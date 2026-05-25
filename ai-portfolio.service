@@ -1,0 +1,15 @@
+[Unit]
+Description=Gradio AI Portfolio
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/ai-portfolio
+# Ensure we use the full path to uv
+ExecStart=/home/ubuntu/.cargo/bin/uv run python app.py
+Restart=always
+# Environment variables can be added here
+# Environment=OPENAI_API_KEY=your_key
+
+[Install]
+WantedBy=multi-user.target

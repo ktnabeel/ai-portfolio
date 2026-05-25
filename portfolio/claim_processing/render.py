@@ -106,7 +106,7 @@ def _process_single(claim_text: str) -> str:
         extracted_rows += f"<tr><td>{key}</td><td>{value}</td></tr>"
 
     html = f"""
-    <div id='claim-tab' style='padding:20px'>
+    <div id='claim-tab' style='padding:10px'>
         <h2>Claim Analysis Results</h2>
 
         <div class='claim-metric-card'>
@@ -197,7 +197,7 @@ def _process_batch(claims_text: str) -> str:
     )
 
     html = f"""
-    <div id='claim-tab' style='padding:20px'>
+    <div id='claim-tab' style='padding:10px'>
         <h2>Batch Claim Processing</h2>
         {summary}
         {rows}

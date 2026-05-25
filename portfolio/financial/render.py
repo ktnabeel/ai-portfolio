@@ -61,7 +61,7 @@ def _analyze_single(ticker: str) -> str:
         )
 
     html = f"""
-    <div id='financial-tab' style='padding:20px'>
+    <div id='financial-tab' style='padding:10px'>
         <h2>{result.ticker} Analysis</h2>
         <div class='metric-card'>
             <span class='{color_cls}'>{result.action.value}</span>
@@ -115,7 +115,7 @@ def _analyze_portfolio(holdings_text: str) -> str:
     risk_cls = risk_color.get(result.portfolio_risk.value, "result-hold")
 
     html = f"""
-    <div id='financial-tab' style='padding:20px'>
+    <div id='financial-tab' style='padding:10px'>
         <h2>Portfolio Analysis</h2>
         <div class='metric-card'>
             <strong>{result.summary}</strong><br>

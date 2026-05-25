@@ -277,8 +277,8 @@ def _run_workflow(symbol: str) -> tuple[str, str, str, str, str, str, str]:
 def render_trading_tab() -> None:
     """Build the Trading tab in the Gradio app."""
     gr.Markdown(f"""
-    <h1 style="text-align:center; margin-bottom:6px; color:{TEXT};">🤖 Multi-Agent Options Trading</h1>
-    <p style="text-align:center; color:{SECONDARY}; margin-bottom:28px;">
+    <h1 style="text-align:center; margin-bottom:4px; color:{TEXT};">🤖 Multi-Agent Options Trading</h1>
+    <p style="text-align:center; color:{SECONDARY}; margin-bottom:12px;">
     5 specialized AI agents orchestrated by <b>LangGraph</b> — from symbol to execution
     </p>""")
 
@@ -312,10 +312,10 @@ def render_trading_tab() -> None:
 
         with gr.Column(scale=2, min_width=500):
             status_output = gr.HTML(f"""
-            <div style="text-align:center; padding:40px; color:{SECONDARY};">
-                <div style="font-size:3em; margin-bottom:16px;">🤖</div>
-                <div style="font-size:1.2em; font-weight:600; color:{TEXT};">Ready to Trade</div>
-                <div style="margin-top:8px;">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 5 agents</div>
+            <div style="text-align:center; padding:20px; color:{SECONDARY};">
+                <div style="font-size:2em; margin-bottom:12px;">🤖</div>
+                <div style="font-size:1.1em; font-weight:600; color:{TEXT};">Ready to Trade</div>
+                <div style="margin-top:4px;">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 5 agents</div>
             </div>""")
 
             # Per-agent output panels

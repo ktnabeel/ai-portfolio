@@ -421,13 +421,13 @@ h1, h2, h3, p { margin-top: 0; }
 
 .workspace {
   min-width: 0;
-  padding: 28px;
+  padding: 16px;
 }
 .top-bar {
   position: sticky;
-  top: 20px;
+  top: 10px;
   z-index: 100;
-  min-height: 62px;
+  min-height: 52px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -531,7 +531,7 @@ h1, h2, h3, p { margin-top: 0; }
 [data-theme="dark"] .theme-icon-dark  { opacity: 1; transform: scale(1); }
 
 .intro {
-  padding: 100px 8px 44px;
+  padding: 40px 8px 24px;
   max-width: 940px;
 }
 .intro h2 {
@@ -550,13 +550,13 @@ h1, h2, h3, p { margin-top: 0; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 54px;
+  margin-bottom: 32px;
 }
 .capability-strip div {
-  min-height: 112px;
+  min-height: 100px;
   border: 1px solid var(--theme-line);
   border-radius: 12px;
-  padding: 22px;
+  padding: 16px;
   background: var(--theme-panel);
   box-shadow: 0 2px 12px var(--theme-shadow);
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
@@ -578,7 +578,7 @@ h1, h2, h3, p { margin-top: 0; }
   color: var(--theme-muted);
 }
 .projects-section {
-  padding-bottom: 80px;
+  padding-bottom: 40px;
 }
 .section-heading {
   display: flex;
@@ -603,7 +603,7 @@ h1, h2, h3, p { margin-top: 0; }
   align-items: center;
   border: 1px solid var(--theme-line);
   border-radius: 14px;
-  padding: 24px;
+  padding: 16px;
   background: var(--theme-panel);
   box-shadow: 0 4px 20px var(--theme-shadow);
   transition: border-color .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;

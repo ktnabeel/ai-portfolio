@@ -19,6 +19,13 @@ APP_CSS = """
 .gradio-container { max-width: none !important; padding: 0 !important; }
 footer { display: none !important; }
 
+/* ===== Tighten Gradio Layout ===== */
+.tabs { margin-bottom: 0 !important; }
+.tabitem { padding: 0 !important; border: none !important; }
+.gr-box { border-radius: 0 !important; border: none !important; }
+.gr-padded { padding: 8px !important; }
+.gr-form { gap: 8px !important; }
+
 /* ===== Theme variable defaults (mirrors render.py for non-landing tabs) ===== */
 :root {
   --theme-bg: #f4f6f4;
