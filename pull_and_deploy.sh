@@ -22,21 +22,32 @@ else
 fi
 
 # 2. Ensure Environment is ready
-if ! command -v uv &> /dev/null
-then
+UV_BIN=""
+if command -v uv &> /dev/null; then
+    UV_BIN=$(command -v uv)
+elif [ -f "$HOME/.cargo/bin/uv" ]; then
+    UV_BIN="$HOME/.cargo/bin/uv"
+elif [ -f "$HOME/.local/bin/uv" ]; then
+    UV_BIN="$HOME/.local/bin/uv"
+elif [ -f "/home/ubuntu/.cargo/bin/uv" ]; then
+    UV_BIN="/home/ubuntu/.cargo/bin/uv"
+elif [ -f "/root/.local/bin/uv" ]; then
+    UV_BIN="/root/.local/bin/uv"
+else
     echo "Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    source $HOME/.cargo/env
+    [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+    [ -f "$HOME/.local/bin/uv" ] && UV_BIN="$HOME/.local/bin/uv" || UV_BIN="$HOME/.cargo/bin/uv"
 fi
 
 # 3. Sync and Start
-echo "Syncing dependencies..."
-$HOME/.cargo/bin/uv sync
+echo "Syncing dependencies using $UV_BIN..."
+"$UV_BIN" sync
 
 echo "Restarting application..."
 pkill -f "python app.py" || true
 mkdir -p logs
-nohup $HOME/.cargo/bin/uv run python app.py > logs/app.log 2>&1 &
+nohup "$UV_BIN" run python app.py > logs/app.log 2>&1 &
 
 echo "------------------------------------------------"
 echo "Success! App is running."
