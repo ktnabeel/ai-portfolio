@@ -9,8 +9,8 @@ from .models import (
     RoutingDecision,
 )
 from .processor import ClaimProcessor
-from .render import render_claim_tab, CLAIM_DARK_CSS
 
+# render_claim_tab requires gradio — lazy import to avoid breakage in non-Gradio environments.
 __all__ = [
     "ClaimData",
     "ClaimAnalysis",
@@ -19,6 +19,10 @@ __all__ = [
     "FraudRisk",
     "RoutingDecision",
     "ClaimProcessor",
-    "render_claim_tab",
-    "CLAIM_DARK_CSS",
 ]
+
+
+def _get_render():
+    """Return render helpers, loading gradio only when needed."""
+    from .render import render_claim_tab, CLAIM_DARK_CSS
+    return render_claim_tab, CLAIM_DARK_CSS

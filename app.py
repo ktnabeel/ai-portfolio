@@ -7,7 +7,7 @@ from portfolio.db import get_projects, init_db, seed_projects
 from portfolio.project_templates import PROJECT_TEMPLATES
 from portfolio.render import render_page
 from portfolio.financial import render_financial_tab, DARK_CSS
-from portfolio.claim_processing import render_claim_tab, CLAIM_DARK_CSS
+from portfolio.claim_processing.render import render_claim_tab, CLAIM_DARK_CSS
 from portfolio.movie_recommender import render_movie_tab, MOVIE_CSS
 from portfolio.sentiment import render_sentiment_tab, SENTIMENT_CSS
 from portfolio.trading.ui import render_trading_tab, TRADING_CSS
