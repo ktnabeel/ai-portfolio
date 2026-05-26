@@ -34,7 +34,7 @@ PROJECT_TEMPLATES = [
         title="Finance Planning",
         outcome="AI planning assistant for budgeting, scenario analysis, and financial goal tracking.",
         tech_stack="Python, analytics, LLM workflows",
-        status="Template",
+        status="Built",
         tags=("Finance", "Planning", "Assistant"),
     ),
     Project(

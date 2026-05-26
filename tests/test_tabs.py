@@ -26,7 +26,7 @@ def test_portfolio_tab_renders_html(tmp_path: Path) -> None:
     html = render_page(get_projects(db_path))
     assert isinstance(html, str)
     assert len(html) > 0
-    assert "AI project tiles" in html
+    assert "AI Engineering Portfolio" in html
 
 
 def test_financial_tab_renders() -> None:

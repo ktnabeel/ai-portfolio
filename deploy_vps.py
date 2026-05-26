@@ -2,11 +2,13 @@ import os
 import sys
 import subprocess
 
+from secure_ssh import get_vps_password
+
+
 def deploy():
     ip = "43.131.49.3"
     user = "ubuntu"
-    password = "xl6DJn;^:w3kCf?@"
-    
+
     print("Checking for paramiko...")
     try:
         import paramiko
@@ -21,13 +23,14 @@ def deploy():
     
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    
+
     try:
+        password = get_vps_password(ip, user)
         print(f"[1/3] Connecting to {ip}...")
         ssh.connect(ip, username=user, password=password)
-        
+
         sftp = ssh.open_sftp()
-        
+
         print("[2/3] Uploading project files...")
         
         def mkdir_p(remote_directory):

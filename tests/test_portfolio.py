@@ -14,7 +14,7 @@ def test_empty_portfolio_renders_empty_state(tmp_path: Path) -> None:
     html = render_page(get_projects(db_path))
 
     assert "Real project entries are ready to be added." in html
-    assert "AI project tiles" in html
+    assert "AI Engineering Portfolio" in html
 
 
 def test_project_round_trip_renders_tile(tmp_path: Path) -> None:
@@ -72,7 +72,7 @@ def test_static_export_does_not_render_gradio_tab_links() -> None:
     assert "event.preventDefault();" not in html
     assert 'class="financial-nav-link"' not in html
     assert 'href="#">Demo</a>' not in html
-    assert '<span class="muted">Links coming soon</span>' in html
+    assert 'class="expand-toggle"' in html
 
 
 def test_gradio_portfolio_renders_in_app_project_links() -> None:
@@ -81,7 +81,7 @@ def test_gradio_portfolio_renders_in_app_project_links() -> None:
     assert "Trading Agents" in html
     assert 'data-tab-target="trading"' in html
     assert 'href="#" onclick=' not in html
-    assert html.count(">Demo</a>") == 4
+    assert html.count(">Demo</a>") == 5
 
 
 def test_yaml_config_overrides_static_text(tmp_path: Path) -> None:

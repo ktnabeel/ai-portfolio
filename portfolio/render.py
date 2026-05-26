@@ -8,6 +8,7 @@ from .models import Project
 _TAB_LINKS: dict[str, str] = {
     "Trading Agents": "trading",
     "Claim Processing": "claim",
+    "Finance Planning": "financial",
     "Movie Recommendations": "movie",
     "Product Review Sentiment Analyzer": "sentiment",
 }
@@ -118,25 +119,26 @@ _PROJECT_DETAILS: dict[str, str] = {
     "Finance Planning": """
 <div class="detail-grid">
   <div class="detail-section">
-    <h4>Status</h4>
-    <p>Template — ready for customization with your financial models and planning workflows.</p>
+    <h4>Architecture</h4>
+    <p>Multi-agent financial decision pipeline: Market Data → Technical → Fundamental → Sentiment → Risk → Orchestrator. Each agent contributes a specialized signal to portfolio recommendations.</p>
   </div>
   <div class="detail-section">
-    <h4>Planned Capabilities</h4>
+    <h4>Key Capabilities</h4>
     <ul>
       <li>Budget analysis and scenario modeling</li>
       <li>Financial goal tracking with progress visualization</li>
-      <li>LLM-powered planning assistant</li>
-      <li>Cash flow projections</li>
+      <li>Multi-agent portfolio decision system</li>
+      <li>Technical & fundamental analysis agents</li>
+      <li>Risk assessment and exposure scoring</li>
     </ul>
   </div>
   <div class="detail-section">
     <h4>Stack</h4>
-    <p>Python, analytics, LLM workflows, Gradio UI</p>
+    <p>Python, yfinance, NumPy, Gradio UI</p>
   </div>
   <div class="detail-section">
     <h4>AI Application</h4>
-    <p>Conversational planning assistant that helps users model financial scenarios, track goals, and get AI-generated recommendations based on their financial data.</p>
+    <p>Orchestrated agent pipeline that analyzes stocks across multiple dimensions — market data, technical indicators, fundamentals, sentiment, and risk — then combines signals into actionable portfolio decisions.</p>
   </div>
 </div>""",
     "Movie Recommendations": """
@@ -258,17 +260,6 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
 def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
     site = config["site"]
     capabilities = config["capabilities"]
-    tab_nav_html = ""
-    if mode == "gradio":
-        tab_nav_html = "\n          ".join(
-            [
-                _tab_link("financial", "Financial Agent", "financial-nav-link"),
-                _tab_link("trading", "Trading", "trading-nav-link"),
-                _tab_link("claim", "Claim Processing", "claim-nav-link"),
-                _tab_link("movie", "Movies", "movie-nav-link"),
-                _tab_link("sentiment", "Sentiment", "sentiment-nav-link"),
-            ]
-        )
     capabilities_html = "\n".join(
         f"<div><strong>{escape(str(item['title']))}</strong><span>{escape(str(item['description']))}</span></div>"
         for item in capabilities
@@ -281,16 +272,13 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
         <div>
           <span class="status-dot"></span>
           {escape(site["status_label"])}
-        </div>
-        <nav aria-label="Portfolio navigation">
-          <a href="#projects">Projects</a>
-          {tab_nav_html}
-          <a href="{escape(site["linkedin_url"])}" target="_blank" rel="noreferrer">Contact</a>
+          <span class="top-bar-sep"></span>
+          <a href="{escape(site["linkedin_url"])}" target="_blank" rel="noreferrer" class="top-bar-contact">Contact</a>
           <button class="theme-toggle" onclick="(function(){{var h=document.documentElement;var t=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',t);try{{localStorage.setItem('theme',t)}}catch(e){{}}}})();" aria-label="Toggle dark/light theme" title="Toggle theme">
             <span class="theme-icon-light">☀️</span>
             <span class="theme-icon-dark">🌙</span>
           </button>
-        </nav>
+        </div>
       </header>
 
       <section class="intro">
@@ -465,10 +453,11 @@ h1, h2, h3, p { margin-top: 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  flex-wrap: nowrap;
+  gap: 12px;
   border: 1px solid var(--theme-line);
   border-radius: 14px;
-  padding: 0 20px;
+  padding: 0 16px;
   background: rgba(var(--theme-panel-rgb), 0.72);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -478,9 +467,10 @@ h1, h2, h3, p { margin-top: 0; }
 .top-bar div {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  flex-shrink: 0;
+  gap: 7px;
   color: var(--theme-muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 .status-dot {
@@ -490,53 +480,30 @@ h1, h2, h3, p { margin-top: 0; }
   background: var(--theme-green);
   box-shadow: 0 0 0 5px var(--theme-status-glow);
 }
-.top-bar nav {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  color: var(--theme-ink);
-  font-size: 14px;
+.top-bar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: var(--theme-line);
+  margin: 0 1px;
+  flex-shrink: 0;
 }
-.top-bar nav a.financial-nav-link {
-  color: var(--theme-green);
+.top-bar-contact {
+  color: var(--theme-blue) !important;
   font-weight: 850;
+  text-decoration: none;
+  transition: color .18s ease;
 }
-.top-bar nav a.financial-nav-link:hover {
-  color: var(--theme-green-hover);
+.top-bar-contact:hover {
+  color: var(--theme-blue-hover) !important;
 }
-.top-bar nav a.claim-nav-link {
-  color: var(--theme-blue);
-  font-weight: 850;
-}
-.top-bar nav a.claim-nav-link:hover {
-  color: var(--theme-blue-hover);
-}
-.top-bar nav a.movie-nav-link {
-  color: var(--theme-amber);
-  font-weight: 850;
-}
-.top-bar nav a.movie-nav-link:hover {
-  color: var(--theme-movie-link-text);
-}
-.top-bar nav a.sentiment-nav-link {
-  color: var(--theme-sentiment-link-text);
-  font-weight: 850;
-}
-.top-bar nav a.sentiment-nav-link:hover {
-  color: var(--theme-sentiment-link-text);
-}
-.top-bar nav a.trading-nav-link {
-  color: var(--theme-trading-link-text);
-  font-weight: 850;
-}
-.top-bar nav a.trading-nav-link:hover {
-  color: var(--theme-trading-link-text);
-}
+
 
 /* ===== Theme Toggle ===== */
 .theme-toggle {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border: 1px solid var(--theme-line);
@@ -820,11 +787,6 @@ h1, h2, h3, p { margin-top: 0; }
   }
   .top-bar div {
     margin-bottom: 0;
-  }
-  .top-bar nav {
-    flex-wrap: wrap;
-    gap: 12px;
-    justify-content: flex-start;
   }
   .section-heading {
     align-items: flex-start;

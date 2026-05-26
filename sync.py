@@ -3,11 +3,13 @@ import sys
 import subprocess
 import platform
 
+from secure_ssh import get_vps_password
+
 # Configuration - Update these if needed
 IP = "43.131.49.3"
 USER = "ubuntu"
-PASSWORD = "xl6DJn;^:w3kCf?@"
 REPO_DIR = "~/ai-portfolio"
+
 
 def run_cmd(cmd, shell=False):
     """Run a shell command and print output."""
@@ -41,14 +43,15 @@ def local_sync():
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    
+
     try:
-        ssh.connect(IP, username=USER, password=PASSWORD)
+        password = get_vps_password(IP, USER)
+        ssh.connect(IP, username=USER, password=password)
         # Execute the pull_and_deploy.sh script on the VPS
         cmd = f"bash {REPO_DIR}/pull_and_deploy.sh"
         print(f"Executing remote: {cmd}")
         stdin, stdout, stderr = ssh.exec_command(cmd)
-        
+
         for line in stdout:
             print(f"REMOTE: {line.strip()}")
         for line in stderr:
