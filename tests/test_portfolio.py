@@ -42,17 +42,17 @@ def test_project_round_trip_renders_tile(tmp_path: Path) -> None:
     assert "Demo" in html
 
 
-def test_project_templates_include_six_titles() -> None:
+def test_project_templates_include_seven_titles() -> None:
     titles = [project.title for project in PROJECT_TEMPLATES]
 
-    assert titles == [
-        "Trading Agents",
-        "Claim Processing",
-        "Insurance Underwriting Agent",
-        "Product Review Sentiment Analyzer",
-        "Finance Planning",
-        "Movie Recommendations",
-    ]
+    assert "TradingAgents Manager" in titles
+    assert "Trading Agents" in titles
+    assert "Claim Processing" in titles
+    assert "Insurance Underwriting Agent" in titles
+    assert "Product Review Sentiment Analyzer" in titles
+    assert "Finance Planning" in titles
+    assert "Movie Recommendations" in titles
+    assert len(titles) == 7
 
 
 def test_seed_projects_is_idempotent(tmp_path: Path) -> None:
@@ -61,9 +61,9 @@ def test_seed_projects_is_idempotent(tmp_path: Path) -> None:
     first_count = seed_projects(db_path, PROJECT_TEMPLATES)
     second_count = seed_projects(db_path, PROJECT_TEMPLATES)
 
-    assert first_count == 6
+    assert first_count == 7
     assert second_count == 0
-    assert len(get_projects(db_path)) == 6
+    assert len(get_projects(db_path)) == 7
 
 
 def test_static_export_does_not_render_gradio_tab_links() -> None:
@@ -81,7 +81,7 @@ def test_gradio_portfolio_renders_in_app_project_links() -> None:
     assert "Trading Agents" in html
     assert 'data-tab-target="trading"' in html
     assert 'href="#" onclick=' not in html
-    assert html.count(">Demo</a>") == 5
+    assert html.count(">Demo</a>") == 6
 
 
 def test_yaml_config_overrides_static_text(tmp_path: Path) -> None:

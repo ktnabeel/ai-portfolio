@@ -6,6 +6,7 @@ from .models import Project
 
 # Map project titles to Gradio tab IDs for contextual in-app navigation.
 _TAB_LINKS: dict[str, str] = {
+    "TradingAgents Manager": "trading_agents",
     "Trading Agents": "trading",
     "Claim Processing": "claim",
     "Finance Planning": "financial",
@@ -16,6 +17,32 @@ _TAB_LINKS: dict[str, str] = {
 # Rich inline detail content for each project — used in static (Vercel) deployment
 # to provide self-contained expandable cards with no external links.
 _PROJECT_DETAILS: dict[str, str] = {
+    "TradingAgents Manager": """
+<div class="detail-grid">
+  <div class="detail-section">
+    <h4>Architecture</h4>
+    <p>FastAPI service wrapping a LangGraph multi-agent pipeline: Security → Risk/Sentiment → Regime → Decision → Execution → Portfolio Manager. Each agent contributes structured analysis to the final Buy/Sell/Hold rating.</p>
+  </div>
+  <div class="detail-section">
+    <h4>Key Capabilities</h4>
+    <ul>
+      <li>REST API with FastAPI + Pydantic models (/docs for Swagger UI)</li>
+      <li>6-agent orchestrated pipeline (Security, Sentiment, Regime, Decision, Execution, PM)</li>
+      <li>Real-time market data via yfinance</li>
+      <li>CNN Fear &amp; Greed index sentiment analysis</li>
+      <li>Paper-trade execution with simulated broker</li>
+      <li>Structured Buy/Sell/Hold portfolio ratings with confidence scores</li>
+    </ul>
+  </div>
+  <div class="detail-section">
+    <h4>Stack</h4>
+    <p>FastAPI, LangGraph, LangChain (GPT-4o), yfinance, Pydantic v2, Uvicorn, Gradio UI</p>
+  </div>
+  <div class="detail-section">
+    <h4>AI Application</h4>
+    <p>Production-grade portfolio management API that orchestrates specialized LLM agents to analyze stocks across market data, technicals, fundamentals, sentiment, and risk — then synthesizes a structured trading decision with rationale.</p>
+  </div>
+</div>""",
     "Trading Agents": """
 <div class="detail-grid">
   <div class="detail-section">
@@ -189,6 +216,7 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
           const labels = {
             financial: 'Financial Agent',
             trading: 'Trading',
+            trading_agents: 'TradingAgents Manager',
             claim: 'Claim Processing',
             movie: 'Movie Recommendations',
             sentiment: 'Sentiment Analyzer'

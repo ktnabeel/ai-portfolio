@@ -11,6 +11,7 @@ from portfolio.claim_processing.render import render_claim_tab, CLAIM_DARK_CSS
 from portfolio.movie_recommender import render_movie_tab, MOVIE_CSS
 from portfolio.sentiment import render_sentiment_tab, SENTIMENT_CSS
 from portfolio.trading.ui import render_trading_tab, TRADING_CSS
+from portfolio.trading_agents_manager import render_trading_agents_tab, TRADING_AGENTS_CSS
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -87,6 +88,7 @@ element.addEventListener('click', function(event) {
   const labels = {
     financial: 'Financial Agent',
     trading: 'Trading',
+    trading_agents: 'TradingAgents Manager',
     claim: 'Claim Processing',
     movie: 'Movie Recommendations',
     sentiment: 'Sentiment Analyzer'
@@ -133,6 +135,9 @@ def build_app() -> gr.Blocks:
             with gr.TabItem("Sentiment Analyzer"):
                 render_sentiment_tab()
 
+            with gr.TabItem("TradingAgents Manager"):
+                render_trading_agents_tab()
+
             with gr.TabItem("Trading"):
                 render_trading_tab()
 
@@ -147,5 +152,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name=launch_config["server"]["host"],
         server_port=launch_config["server"]["port"],
-        css=APP_CSS + DARK_CSS + CLAIM_DARK_CSS + MOVIE_CSS + SENTIMENT_CSS + TRADING_CSS,
+        css=APP_CSS + DARK_CSS + CLAIM_DARK_CSS + MOVIE_CSS + SENTIMENT_CSS + TRADING_CSS + TRADING_AGENTS_CSS,
     )

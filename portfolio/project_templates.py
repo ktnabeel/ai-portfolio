@@ -3,6 +3,13 @@ from .models import Project
 
 PROJECT_TEMPLATES = [
     Project(
+        title="TradingAgents Manager",
+        outcome="Multi-agent portfolio manager powered by LangGraph — FastAPI service orchestrating Security, Sentiment, Regime, Decision, and Execution agents for market analysis.",
+        tech_stack="Python, FastAPI, LangGraph, yfinance, Pydantic",
+        status="Built",
+        tags=("Agents", "Finance", "FastAPI", "LangGraph"),
+    ),
+    Project(
         title="Trading Agents",
         outcome="Multi-agent trading research workflow for market analysis and decision support.",
         tech_stack="Python, LLM agents, financial data",
