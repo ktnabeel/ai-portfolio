@@ -142,8 +142,8 @@ class TestGraphConstruction:
         graph = build_trading_graph()
         nodes = graph.get_graph().nodes
         node_names = {n for n in nodes.keys()}
-        expected = {"security", "sentiment", "regime", "fetch_chain",
-                     "decision", "execution", "__start__", "__end__"}
+        expected = {"security_agent", "sentiment_agent", "regime_agent", "fetch_chain",
+                     "decision_agent", "execution_agent", "__start__", "__end__"}
         assert node_names == expected
 
 
@@ -350,7 +350,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_strategy_call
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("AAPL")
+            result = run_trading_workflow("AAPL", user_approved=True)
 
         assert result["symbol"] == "AAPL"
         assert result["security"] is not None
@@ -391,7 +391,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_no_trade
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("AAPL")
+            result = run_trading_workflow("AAPL", user_approved=True)
 
         assert result["strategy"].strategy == OptionStrategy.NO_TRADE
         assert result["execution"] is not None
@@ -418,7 +418,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_strategy_call
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("AAPL")
+            result = run_trading_workflow("AAPL", user_approved=True)
 
         assert result is not None
         assert result.get("error")  # security failed, error should be recorded
@@ -449,7 +449,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_strategy_call
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("MSFT")
+            result = run_trading_workflow("MSFT", user_approved=True)
 
         keywords = ["Security", "Risk/Sentiment", "Regime", "Options Chain",
                      "Decision", "Execution"]
@@ -489,7 +489,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_put
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("AAPL")
+            result = run_trading_workflow("AAPL", user_approved=True)
 
         assert result["strategy"].strategy == OptionStrategy.PUT
         assert result["execution"] is not None
@@ -527,7 +527,7 @@ class TestWorkflowEndToEnd:
             dec.return_value.decide.return_value = mock_strangle
             exec.return_value.execute.return_value = mock_exec
 
-            result = run_trading_workflow("MSFT")
+            result = run_trading_workflow("MSFT", user_approved=True)
 
         assert result["strategy"].strategy == OptionStrategy.STRANGLE
         assert result["execution"] is not None

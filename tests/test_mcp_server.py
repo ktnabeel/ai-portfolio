@@ -44,10 +44,10 @@ def server():
 
 
 class TestToolDefinitions:
-    def test_all_five_tools_defined(self):
+    def test_all_six_tools_defined(self):
         tool_names = {t["name"] for t in MCP_TOOLS}
         expected = {"get_account_status", "place_option_order", "cancel_order",
-                     "get_order_history", "reset_account"}
+                     "get_order_history", "reset_account", "close_position"}
         assert tool_names == expected
 
     def test_each_tool_has_parameters_schema(self):
@@ -63,7 +63,7 @@ class TestToolDefinitions:
 
     def test_server_exposes_tool_definitions(self):
         s = MCPTradingServer()
-        assert len(s.tool_definitions) == 5
+        assert len(s.tool_definitions) == 6
 
 
 class TestAccountStatus:

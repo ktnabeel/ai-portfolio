@@ -9,15 +9,15 @@ from .models import AgentCard, AnalysisResponse, PortfolioDecision
 
 # ── CSS Theme Variables ──────────────────────────────────────────────────
 
-TA_BG = "var(--theme-bg, #0d1117)"
-TA_CARD = "var(--theme-panel, #161b22)"
-TA_BORDER = "var(--theme-line, #30363d)"
-TA_ACCENT = "var(--theme-blue, #58a6ff)"
-TA_TEXT = "var(--theme-ink, #c9d1d9)"
-TA_SECONDARY = "var(--theme-muted, #b0b8c1)"
-TA_GREEN = "#3fb950"
-TA_RED = "#f85149"
-TA_AMBER = "#d2991d"
+TA_BG = "var(--theme-bg, #2f3437)"
+TA_CARD = "var(--theme-panel, #373c3f)"
+TA_BORDER = "var(--theme-line, rgba(255,255,255,.14))"
+TA_ACCENT = "var(--theme-blue, #1ca0f1)"
+TA_TEXT = "var(--theme-ink, rgba(255,255,255,.92))"
+TA_SECONDARY = "var(--theme-muted, rgba(255,255,255,.68))"
+TA_GREEN = "#37c78a"
+TA_RED = "#ff7369"
+TA_AMBER = "#dfab01"
 TA_PURPLE = "#b388ff"
 TA_TEAL = "#00bfa5"
 
@@ -50,7 +50,7 @@ def _render_agent_card(card: AgentCard) -> str:
 
 
 def _hex_to_rgb(hex_color: str) -> str:
-    """Convert hex color like '#3fb950' to '63, 185, 80'."""
+    """Convert hex color like '#37c78a' to '55, 199, 138'."""
     h = hex_color.lstrip("#")
     if len(h) == 3:
         h = "".join(c * 2 for c in h)
@@ -64,7 +64,7 @@ def _render_decision(decision: PortfolioDecision) -> str:
         "Buy": TA_GREEN,
         "Overweight": TA_TEAL,
         "Hold": TA_AMBER,
-        "Underweight": "#f0883e",
+        "Underweight": "#ff9a56",
         "Sell": TA_RED,
     }
     color = rating_colors.get(decision.rating.value, TA_AMBER)
@@ -143,77 +143,98 @@ def _run_analysis(symbol: str) -> tuple[str, str, str]:
 
 def render_trading_agents_tab() -> None:
     """Build the TradingAgents Portfolio Manager Gradio tab."""
-    gr.Markdown(f"""
-    <h1 style="text-align:center; margin-bottom:4px; color:{TA_TEXT};">🤖 TradingAgents Portfolio Manager</h1>
-    <p style="text-align:center; color:{TA_SECONDARY}; margin-bottom:12px;">
-    Multi-agent trading analysis powered by <b>LangGraph</b> — Security → Sentiment → Regime → Decision → Execution
-    </p>""")
+    with gr.Column(elem_id="ta-shell", elem_classes=["app-floating-window"]):
+        gr.Markdown(f"""
+        <div class="app-window-header">
+            <div>
+                <h1>TradingAgents Portfolio Manager</h1>
+                <p>Multi-agent trading analysis powered by <b>LangGraph</b></p>
+            </div>
+            <span class="app-window-badge">Deterministic</span>
+        </div>""")
 
-    with gr.Row():
-        with gr.Column(scale=1, min_width=340):
-            gr.Markdown("### 🎯 Analysis Target")
-            symbol_input = gr.Textbox(
-                label="Stock Symbol",
-                placeholder="e.g., AAPL, MSFT, NVDA, TSLA",
-                value="AAPL",
-                info="Enter any US stock symbol for multi-agent analysis",
-            )
-            run_btn = gr.Button("🚀 Run Multi-Agent Analysis", variant="primary", size="lg")
+        with gr.Row():
+            with gr.Column(scale=1, min_width=340):
+                # ── Deterministic model note ──────────────────────────
+                gr.Markdown(f"""
+                <div style="background:{TA_CARD}; border:1px solid {TA_BORDER}; border-radius:10px; padding:16px; margin-bottom:16px;">
+                    <div style="color:{TA_GREEN}; font-weight:700; margin-bottom:6px;">🧠 Deterministic Model</div>
+                    <div style="color:{TA_SECONDARY}; font-size:0.9em; line-height:1.5;">
+                    This tab uses a fully deterministic multi-agent pipeline with no API keys required.<br>
+                    All analysis runs locally — no external LLM calls, no token costs.
+                    </div>
+                </div>""")
 
-            # Agent flow diagram
-            gr.Markdown(f"""
-            <div style="background:{TA_CARD}; border:1px solid {TA_BORDER}; border-radius:10px; padding:16px; margin-top:20px; text-align:center;">
-                <div style="color:{TA_TEXT}; font-weight:700; margin-bottom:12px;">📊 Agent Pipeline</div>
-                <div style="display:flex; flex-direction:column; gap:6px; font-size:0.85em; color:{TA_SECONDARY};">
-                    <span style="color:{TA_ACCENT};">🔍 1. Security Agent → Identify</span>
-                    <span style="color:{TA_TEAL};">🌐 2. Risk/Sentiment → Fear & Greed</span>
-                    <span style="color:{TA_AMBER};">🔄 3. Regime → Bull/Bear/Neutral</span>
-                    <span style="color:{TA_PURPLE};">🎯 4. Decision → Strategy Selection</span>
-                    <span style="color:{TA_GREEN};">💸 5. Execution → Paper Trade</span>
-                    <span style="color:{TA_ACCENT};">📊 6. Portfolio Manager → Final Rating</span>
-                </div>
-            </div>""")
+                gr.Markdown("### 🎯 Analysis Target")
+                symbol_input = gr.Textbox(
+                    label="Stock Symbol",
+                    placeholder="e.g., AAPL, MSFT, NVDA, TSLA",
+                    value="AAPL",
+                    info="Enter any US stock symbol for multi-agent analysis",
+                )
+                run_btn = gr.Button("🚀 Run Multi-Agent Analysis", variant="primary", size="lg")
 
-            # Execution log
-            log_output = gr.HTML("")
+                # Agent flow diagram
+                gr.Markdown(f"""
+                <div style="background:{TA_CARD}; border:1px solid {TA_BORDER}; border-radius:10px; padding:16px; margin-top:20px; text-align:center;">
+                    <div style="color:{TA_TEXT}; font-weight:700; margin-bottom:12px;">📊 Agent Pipeline</div>
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:0.85em; color:{TA_SECONDARY};">
+                        <span style="color:{TA_ACCENT};">🔍 1. Security Agent → Identify</span>
+                        <span style="color:{TA_TEAL};">🌐 2. Risk/Sentiment → Fear & Greed</span>
+                        <span style="color:{TA_AMBER};">🔄 3. Regime → Bull/Bear/Neutral</span>
+                        <span style="color:{TA_PURPLE};">🎯 4. Decision → Strategy Selection</span>
+                        <span style="color:{TA_GREEN};">💸 5. Execution → Paper Trade</span>
+                        <span style="color:{TA_ACCENT};">📊 6. Portfolio Manager → Final Rating</span>
+                    </div>
+                </div>""")
 
-        with gr.Column(scale=2, min_width=500):
-            # Decision highlight at top
-            decision_output = gr.HTML(f"""
-            <div style="text-align:center; padding:40px 20px; color:{TA_SECONDARY};">
-                <div style="font-size:3em; margin-bottom:16px;">🤖</div>
-                <div style="font-size:1.2em; font-weight:600; color:{TA_TEXT};">TradingAgents Portfolio Manager</div>
-                <div style="margin-top:8px;">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 6 agents</div>
-                <div style="margin-top:16px; font-size:0.82em; color:{TA_SECONDARY};">
-                    FastAPI backend available at <code style="color:{TA_ACCENT};">/docs</code> for programmatic access
-                </div>
-            </div>""")
+                # Execution log
+                log_output = gr.HTML("")
 
-            # Agent cards
-            cards_output = gr.HTML("")
+            with gr.Column(scale=2, min_width=500):
+                # Decision highlight
+                decision_output = gr.HTML(f"""
+                <div style="text-align:center; padding:40px 20px; color:{TA_SECONDARY};">
+                    <div style="font-size:2em; margin-bottom:12px;">🤖</div>
+                    <div style="font-size:1.1em; font-weight:600; color:{TA_TEXT};">Ready to Analyze</div>
+                    <div style="margin-top:4px;">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 6 agents</div>
+                </div>""")
 
-    # Wire up
-    run_btn.click(
-        fn=_run_analysis,
-        inputs=[symbol_input],
-        outputs=[decision_output, cards_output, log_output],
-    )
+                # Agent cards
+                cards_output = gr.HTML("")
+
+        # Wire up
+        run_btn.click(
+            fn=_run_analysis,
+            inputs=[symbol_input],
+            outputs=[decision_output, cards_output, log_output],
+        )
 
 
 # ── CSS ──────────────────────────────────────────────────────────────────
 
 TRADING_AGENTS_CSS = """
-/* ===== TradingAgents Manager tab styles ===== */
+/* ===== Portfolio Manager tab styles ===== */
+#ta-shell {
+    max-width: 1380px;
+    margin: 18px auto 34px;
+    padding: 20px;
+    background: var(--theme-panel, #fff);
+    border: 1px solid var(--theme-line, #d9e2ec);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+}
 .ta-card {
-    background: var(--theme-panel, #161b22);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 10px;
+    background: var(--theme-panel, #373c3f);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
     padding: 20px;
     margin-bottom: 14px;
+    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
     transition: all 0.2s;
 }
 .ta-card:hover {
-    border-color: var(--theme-blue, #58a6ff) !important;
+    border-color: var(--theme-blue, #1ca0f1) !important;
     transform: translateX(4px);
 }
 """

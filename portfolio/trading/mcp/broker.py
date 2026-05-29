@@ -53,24 +53,89 @@ class Position:
 
 
 @dataclass
+class TradeRecord:
+    """Record of a completed (closed) trade with P&L."""
+    trade_id: str
+    symbol: str
+    strategy: str
+    entry_date: datetime
+    exit_date: datetime
+    entry_price: float
+    exit_price: float
+    quantity: int
+    realized_pnl: float
+    commission: float
+    notes: str = ""
+
+
+@dataclass
+class RejectionRecord:
+    """Record of a human-in-the-loop trade rejection."""
+    rejection_id: str
+    symbol: str
+    strategy: str
+    reason: str
+    rejected_at: datetime
+    notes: str = ""
+
+
+@dataclass
+class EquitySnapshot:
+    """Point-in-time snapshot of account equity for performance charting."""
+    timestamp: datetime
+    equity: float
+    cash: float
+    total_pnl: float
+    label: str = ""  # e.g. "Opened AAPL Call", "Closed MSFT Put"
+
+
+@dataclass
 class PaperAccount:
     """Paper trading account state."""
     cash: float = 100_000.0
     positions: list[Position] = field(default_factory=list)
     order_history: list[OrderConfirmation] = field(default_factory=list)
+    trade_history: list[TradeRecord] = field(default_factory=list)
+    rejection_history: list[RejectionRecord] = field(default_factory=list)
+    equity_snapshots: list[EquitySnapshot] = field(default_factory=list)
     total_commission: float = 0.0
+    realized_pnl: float = 0.0
 
     @property
     def total_equity(self) -> float:
         return self.cash + sum(p.market_value for p in self.positions)
 
     @property
+    def unrealized_pnl(self) -> float:
+        return sum(p.unrealized_pnl for p in self.positions)
+
+    @property
     def total_pnl(self) -> float:
-        return self.total_equity - 100_000.0
+        return self.realized_pnl + self.unrealized_pnl - self.total_commission
+
+
+def _snapshot_equity(label: str = "") -> None:
+    """Record a point-in-time equity snapshot for performance charting."""
+    account = get_account()
+    account.equity_snapshots.append(EquitySnapshot(
+        timestamp=datetime.now(),
+        equity=account.total_equity,
+        cash=account.cash,
+        total_pnl=account.total_pnl,
+        label=label,
+    ))
 
 
 # Global paper account instance
 _account = PaperAccount()
+# Take initial snapshot (rely on _account global since get_account isn't ready yet)
+_account.equity_snapshots.append(EquitySnapshot(
+    timestamp=datetime.now(),
+    equity=_account.total_equity,
+    cash=_account.cash,
+    total_pnl=_account.total_pnl,
+    label="Initial balance $100,000",
+))
 
 
 def get_account() -> PaperAccount:
@@ -82,6 +147,67 @@ def reset_account():
     """Reset the paper account to initial state."""
     global _account
     _account = PaperAccount()
+    _snapshot_equity("Initial balance $100,000")
+
+
+def close_position(position_id: str, exit_price: float | None = None) -> dict:
+    """Close an open position and realise its P&L.
+
+    Args:
+        position_id: The position ID to close.
+        exit_price: Optional override exit price (otherwise uses current_price).
+
+    Returns:
+        Dict with trade details or error.
+    """
+    account = get_account()
+
+    for i, pos in enumerate(account.positions):
+        if pos.position_id == position_id:
+            final_price = exit_price if exit_price is not None else pos.current_price
+            proceeds = final_price * pos.quantity * 100
+            cost = pos.cost_basis
+            realized = proceeds - cost
+
+            # Return proceeds to cash
+            account.cash += proceeds
+            account.realized_pnl += realized
+
+            # Record the trade
+            trade = TradeRecord(
+                trade_id=f"TRD-{uuid.uuid4().hex[:8].upper()}",
+                symbol=pos.symbol,
+                strategy=pos.strategy,
+                entry_date=pos.entry_date,
+                exit_date=datetime.now(),
+                entry_price=pos.entry_price,
+                exit_price=final_price,
+                quantity=pos.quantity,
+                realized_pnl=realized,
+                commission=0.0,  # commission was already deducted at entry
+                notes=f"Position closed. Realized P&L: ${realized:,.2f}",
+            )
+            account.trade_history.append(trade)
+
+            # Remove the position
+            del account.positions[i]
+
+            _snapshot_equity(f"Closed {trade.symbol} {trade.strategy}")
+
+            return {
+                "success": True,
+                "trade_id": trade.trade_id,
+                "position_id": position_id,
+                "symbol": trade.symbol,
+                "realized_pnl": round(trade.realized_pnl, 2),
+                "exit_price": final_price,
+                "notes": trade.notes,
+            }
+
+    return {
+        "success": False,
+        "error": f"Position '{position_id}' not found.",
+    }
 
 
 def execute_paper_trade(request: OrderRequest) -> OrderConfirmation:
@@ -146,6 +272,8 @@ def execute_paper_trade(request: OrderRequest) -> OrderConfirmation:
     )
     account.positions.append(position)
 
+    _snapshot_equity(f"Opened {request.symbol} {request.strategy.value}")
+
     confirmation = OrderConfirmation(
         order_id=request.order_id,
         status=OrderStatus.FILLED,
@@ -162,6 +290,31 @@ def execute_paper_trade(request: OrderRequest) -> OrderConfirmation:
     )
     account.order_history.append(confirmation)
     return confirmation
+
+
+def record_rejection(symbol: str, strategy: str, reason: str, notes: str = "") -> RejectionRecord:
+    """Record a human-in-the-loop trade rejection in the account history.
+
+    Args:
+        symbol: Stock symbol that was rejected.
+        strategy: The recommended strategy that was rejected.
+        reason: Human-readable rejection reason.
+        notes: Optional additional notes.
+
+    Returns:
+        The created RejectionRecord.
+    """
+    account = get_account()
+    record = RejectionRecord(
+        rejection_id=f"REJ-{uuid.uuid4().hex[:8].upper()}",
+        symbol=symbol,
+        strategy=strategy,
+        reason=reason or "No reason provided.",
+        rejected_at=datetime.now(),
+        notes=notes,
+    )
+    account.rejection_history.append(record)
+    return record
 
 
 def _estimate_option_price(request: OrderRequest) -> float:

@@ -20,8 +20,9 @@ from typing import Optional
 import numpy as np
 import yfinance as yf
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
+from .._llm import create_llm
 from ..models import MarketRegime, RegimeOutput, RiskSentimentOutput
 
 
@@ -54,8 +55,8 @@ class RegimeAgent:
 
     NAME = "Regime Detection"
 
-    def __init__(self, model_name: str = "gpt-4o"):
-        self.llm = ChatOpenAI(model=model_name, temperature=0.2)
+    def __init__(self, llm: BaseChatModel | None = None):
+        self.llm = llm  # None → deterministic / rule-based fallback
 
     def analyze(
         self,
@@ -110,7 +111,32 @@ class RegimeAgent:
         else:
             sma_slope = 0.0
 
-        # Build market data context
+        # Rule-based deterministic classification (no LLM needed)
+        if price_vs_sma50 > 0.02 and sma_slope > 0.01 and rsi > 55:
+            det_regime = MarketRegime.BULL
+            det_confidence = 0.7
+            det_analysis = f"Bull market: SPY above 50-SMA by {price_vs_sma50:.1%}, RSI at {rsi:.0f}, positive trend."
+        elif price_vs_sma50 < -0.02 and sma_slope < -0.01 and rsi < 45:
+            det_regime = MarketRegime.BEAR
+            det_confidence = 0.7
+            det_analysis = f"Bear market: SPY below 50-SMA by {price_vs_sma50:.1%}, RSI at {rsi:.0f}, negative trend."
+        else:
+            det_regime = MarketRegime.NEUTRAL
+            det_confidence = 0.5
+            det_analysis = f"Neutral market: Mixed signals, SPY near moving averages, RSI at {rsi:.0f}."
+
+        if self.llm is None:
+            return RegimeOutput(
+                regime=det_regime,
+                confidence=det_confidence,
+                volatility_index=volatility,
+                trend_strength=abs(sma_slope),
+                sp500_trend="UP" if sma_slope > 0 else "DOWN",
+                indicators={"rsi": round(rsi, 1), "sma_50": round(sma_50, 2), "sma_200": round(sma_200, 2)},
+                reasoning=det_analysis,
+            )
+
+        # Build market data context for LLM
         market_context = f"""
 S&P 500 (SPY) - Current: ${current_price:.2f}
   50-day SMA: ${sma_50:.2f} ({price_vs_sma50:+.1%})
@@ -139,27 +165,14 @@ Risk Assessment: {sentiment.risk_assessment}
             response = self.llm.invoke(messages)
             analysis = str(response.content) if hasattr(response, 'content') else str(response)
         except Exception:
-            # Rule-based fallback
-            if price_vs_sma50 > 0.02 and sma_slope > 0.01 and rsi > 55:
-                regime = MarketRegime.BULL
-                confidence = 0.7
-                analysis = f"Bull market: SPY above 50-SMA by {price_vs_sma50:.1%}, RSI at {rsi:.0f}, positive trend."
-            elif price_vs_sma50 < -0.02 and sma_slope < -0.01 and rsi < 45:
-                regime = MarketRegime.BEAR
-                confidence = 0.7
-                analysis = f"Bear market: SPY below 50-SMA by {price_vs_sma50:.1%}, RSI at {rsi:.0f}, negative trend."
-            else:
-                regime = MarketRegime.NEUTRAL
-                confidence = 0.5
-                analysis = f"Neutral market: Mixed signals, SPY near moving averages, RSI at {rsi:.0f}."
             return RegimeOutput(
-                regime=regime,
-                confidence=confidence,
+                regime=det_regime,
+                confidence=det_confidence,
                 volatility_index=volatility,
                 trend_strength=abs(sma_slope),
                 sp500_trend="UP" if sma_slope > 0 else "DOWN",
                 indicators={"rsi": round(rsi, 1), "sma_50": round(sma_50, 2), "sma_200": round(sma_200, 2)},
-                reasoning=analysis,
+                reasoning=det_analysis,
             )
 
         # Parse LLM response

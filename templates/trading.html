@@ -1,43 +1,64 @@
-<!-- Trading -->
 {% extends "base.html" %}
 {% block content %}
-<section class="page-section">
-  <h1>🤖 Multi-Agent Options Trading</h1>
-  <p class="page-subtitle">5 specialized AI agents orchestrated by LangGraph — from symbol to execution</p>
+<section class="page-section app-window trading-window">
+  <div class="app-window-header">
+    <div>
+      <p class="eyebrow">Trading Workflow</p>
+      <h1>Multi-Agent Options Trading Desk</h1>
+      <p class="page-subtitle">Configure, analyze, inspect agent decisions, then execute or reject in paper trading.</p>
+    </div>
+    <span class="app-window-badge">Human Review</span>
+  </div>
 
-  <div class="trading-layout">
-    <div class="trading-sidebar">
-      <h3>🎯 Trading Target</h3>
-      <form method="post" action="/trading">
+  <div class="workflow-steps">
+    <span class="workflow-step active">1 Configure</span>
+    <span class="workflow-step">2 Analyze</span>
+    <span class="workflow-step">3 Decision Review</span>
+    <span class="workflow-step">4 Paper Account</span>
+  </div>
+
+  <form method="post" action="/trading/analyze" class="floating-panel trading-config">
+    <div class="form-grid">
+      <div>
         <label class="form-label" for="symbol">Stock Symbol</label>
-        <input class="form-input" type="text" id="symbol" name="symbol"
-               value="{{ symbol|default('AAPL') }}" placeholder="e.g. AAPL, MSFT, NVDA, TSLA, SPY">
-        <p class="form-hint">Enter any US stock symbol with options</p>
-        <button class="btn-primary btn-full" type="submit">🚀 Run Multi-Agent Analysis</button>
-      </form>
-
-      <div class="agent-flow">
-        <div class="flow-title">📊 Agent Flow</div>
-        <div class="flow-step">🔍 1. Security Agent → Identify</div>
-        <div class="flow-step" style="color:var(--trading-teal)">🌐 2. Risk/Sentiment → Fear & Greed</div>
-        <div class="flow-step" style="color:var(--trading-amber)">🔄 3. Regime → Bull/Bear/Neutral</div>
-        <div class="flow-step">📊 4. Options Chain → Contracts</div>
-        <div class="flow-step" style="color:var(--trading-purple)">🎯 5. Decision → Strategy</div>
-        <div class="flow-step" style="color:var(--trading-green)">💸 6. Execution → MCP Trade</div>
+        <input class="form-input" type="text" id="symbol" name="symbol" value="AAPL" placeholder="AAPL, MSFT, NVDA, TSLA">
+      </div>
+      <div>
+        <label class="form-label" for="mode">Workflow Mode</label>
+        <select class="form-select" id="mode" name="mode">
+          <option value="paper" selected>Paper Trading</option>
+          <option value="decision">Decision Review Only</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="llm_provider">Provider</label>
+        <select class="form-select" id="llm_provider" name="llm_provider">
+          {% for provider in providers %}
+          <option value="{{ provider.value }}">{{ provider.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label" for="llm_model">Model</label>
+        <select class="form-select" id="llm_model" name="llm_model">
+          {% for model in models %}
+          <option value="{{ model.value }}" {% if model.value == default_model %}selected{% endif %}>{{ model.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-wide">
+        <label class="form-label" for="openai_api_key">API Key</label>
+        <input class="form-input" type="password" id="openai_api_key" name="openai_api_key" placeholder="Leave blank to use environment or deterministic mode">
       </div>
     </div>
-
-    <div class="trading-main">
-      {% if result_html %}
-      <div class="results-area">{{ result_html|safe }}</div>
-      {% else %}
-      <div class="trading-placeholder">
-        <div class="placeholder-icon">🤖</div>
-        <div class="placeholder-title">Ready to Trade</div>
-        <div class="placeholder-text">Enter a symbol and click <b>Run Analysis</b> to orchestrate all 5 agents</div>
-      </div>
-      {% endif %}
+    <div class="btn-row">
+      <button class="btn-primary btn-compact" type="submit">Run Analysis</button>
     </div>
+  </form>
+
+  <div class="trading-placeholder floating-panel">
+    <div class="placeholder-title">Ready for analysis</div>
+    <div class="placeholder-text">The next screen shows the Agent Pipeline Flow. Click each stage to inspect the complete decision trace before taking action.</div>
   </div>
 </section>
 {% endblock %}

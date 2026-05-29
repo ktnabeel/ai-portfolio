@@ -7,34 +7,41 @@ from .models import PortfolioHolding
 
 DARK_CSS = """
 #financial-tab {
-    background: var(--theme-bg, #0d1117);
-    color: var(--theme-ink, #c9d1d9);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid var(--theme-line, #d9e2ec);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+    color: var(--theme-ink, rgba(255,255,255,.92));
     font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
 }
 #financial-tab h1, #financial-tab h2, #financial-tab h3 {
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
 }
 .result-buy {
-    color: #3fb950;
+    color: var(--theme-green, #37c78a);
     font-weight: bold;
     font-size: 1.2em;
 }
 .result-sell {
-    color: #f85149;
+    color: var(--theme-red, #ff7369);
     font-weight: bold;
     font-size: 1.2em;
 }
 .result-hold {
-    color: #d2991d;
+    color: var(--theme-amber, #dfab01);
     font-weight: bold;
     font-size: 1.2em;
 }
 .metric-card {
-    background: var(--theme-panel, #161b22);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 8px;
-    padding: 12px;
-    margin: 6px 0;
+    background: var(--theme-panel, #373c3f);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
+    padding: 16px;
+    margin: 10px 0;
+    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
 """
 
@@ -42,7 +49,7 @@ DARK_CSS = """
 def _analyze_single(ticker: str) -> str:
     """Run analysis on a single ticker and return HTML result."""
     if not ticker or not ticker.strip():
-        return "<p style='color:#f85149'>Please enter a stock ticker.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please enter a stock ticker.</p>"
 
     orch = DecisionOrchestrator()
     result = orch.analyze_stock(ticker)
@@ -79,7 +86,7 @@ def _analyze_single(ticker: str) -> str:
 def _analyze_portfolio(holdings_text: str) -> str:
     """Parse holdings text and run portfolio analysis, return HTML."""
     if not holdings_text or not holdings_text.strip():
-        return "<p style='color:#f85149'>Please enter portfolio holdings.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please enter portfolio holdings.</p>"
 
     holdings = []
     for line in holdings_text.strip().split("\n"):
@@ -94,7 +101,7 @@ def _analyze_portfolio(holdings_text: str) -> str:
             holdings.append(PortfolioHolding(ticker=ticker, shares=shares, avg_price=avg_price))
 
     if not holdings:
-        return "<p style='color:#f85149'>No valid holdings found.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>No valid holdings found.</p>"
 
     orch = DecisionOrchestrator()
     result = orch.analyze_portfolio(holdings)

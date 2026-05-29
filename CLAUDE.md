@@ -12,6 +12,8 @@ Key tabs:
 - **Claim Processing** — Insurance claim automation pipeline
 - **Movie Recommendations** — AI-powered movie recommender (two-tower embeddings + SVD collaborative filtering + LLM-style preference parsing)
 - **Sentiment Analyzer** — Product review sentiment analysis on Amazon reviews
+- **Insurance Underwriting** — Agentic underwriting assistant with 4-dimension risk assessment (Health, Occupation, Lifestyle, Financial), policy context builder, and chain-of-thought decision engine
+- **TradingAgents Manager** — FastAPI portfolio manager orchestrating LangGraph agents (Security → Risk/Sentiment → Regime → Decision → Execution)
 - **Trading** — Multi-agent options trading via LangGraph (Security → Risk/Sentiment → Regime → Decision → Execution), MCP paper-trading server, Black-Scholes pricing
 
 ## Development Commands
@@ -46,6 +48,11 @@ ai-portfolio/
 │   ├── models.py           # Project tile dataclass
 │   ├── project_templates.py # Seed data for portfolio tiles
 │   ├── render.py           # Landing page CSS + HTML (glassmorphism, floating top bar)
+│   ├── underwriting/       # Insurance Underwriting Agent tab
+│   │   ├── __init__.py     # Package exports (lazy gradio import)
+│   │   ├── models.py       # ApplicationData, UnderwritingResult, RiskFactor, enums
+│   │   ├── agent.py        # UnderwritingAgent — extraction, risk assessment, policy context, decision engine
+│   │   └── render.py       # Gradio UI + UNDERWRITING_CSS
 │   ├── financial/          # Financial Agent tab — multi-agent portfolio decisions
 │   │   ├── __init__.py     # Package exports + DARK_CSS
 │   │   ├── models.py       # AgentSignal, PortfolioHolding, StockDecision, enums

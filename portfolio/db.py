@@ -7,7 +7,7 @@ from .models import Project
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
+    title TEXT NOT NULL UNIQUE,
     outcome TEXT NOT NULL,
     tech_stack TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'In progress',
@@ -58,7 +58,7 @@ def add_project(db_path: str | Path, project: Project) -> None:
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO projects (
+            INSERT OR IGNORE INTO projects (
                 title, outcome, tech_stack, status, tags, github_url, demo_url, image_url
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -76,14 +76,81 @@ def add_project(db_path: str | Path, project: Project) -> None:
         )
 
 
-def seed_projects(db_path: str | Path, projects: list[Project]) -> int:
-    existing_titles = {project.title for project in get_projects(db_path)}
+def seed_projects(db_path: str | Path, projects: list[Project]) -> tuple[int, int]:
+    """Seed the projects table, updating existing entries, adding new ones,
+    and removing stale entries no longer in the template list.
+
+    Returns a tuple of (added_count, deleted_count).
+    """
+    existing = {project.title: project for project in get_projects(db_path)}
     added = 0
+    template_titles = {project.title for project in projects}
 
     for project in projects:
-        if project.title in existing_titles:
+        if project.title in existing:
+            existing_project = existing[project.title]
+            # Update if any field changed
+            if (
+                existing_project.outcome != project.outcome
+                or existing_project.tech_stack != project.tech_stack
+                or existing_project.status != project.status
+                or existing_project.tags != project.tags
+                or existing_project.github_url != project.github_url
+                or existing_project.demo_url != project.demo_url
+            ):
+                _update_project(db_path, project)
             continue
         add_project(db_path, project)
         added += 1
 
-    return added
+    # Delete stale entries that are no longer in the template list.
+    stale_titles = set(existing.keys()) - template_titles
+    deleted = _delete_projects_by_titles(db_path, stale_titles)
+
+    return added, deleted
+
+
+def _update_project(db_path: str | Path, project: Project) -> None:
+    """Update an existing project by title."""
+    init_db(db_path)
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE projects
+            SET outcome = ?,
+                tech_stack = ?,
+                status = ?,
+                tags = ?,
+                github_url = ?,
+                demo_url = ?,
+                image_url = ?
+            WHERE title = ?
+            """,
+            (
+                project.outcome,
+                project.tech_stack,
+                project.status,
+                ", ".join(project.tags),
+                project.github_url,
+                project.demo_url,
+                project.image_url,
+                project.title,
+            ),
+        )
+
+
+def _delete_projects_by_titles(db_path: str | Path, titles: set[str]) -> int:
+    """Delete projects whose titles are in the given set.
+
+    Returns the number of rows deleted.
+    """
+    if not titles:
+        return 0
+    init_db(db_path)
+    placeholders = ", ".join("?" for _ in titles)
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.execute(
+            f"DELETE FROM projects WHERE title IN ({placeholders})",
+            tuple(titles),
+        )
+        return cursor.rowcount

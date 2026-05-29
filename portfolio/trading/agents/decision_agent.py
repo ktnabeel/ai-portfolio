@@ -16,8 +16,9 @@ Uses:
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
+from .._llm import create_llm
 from ..models import (
     MarketRegime,
     OptionChain,
@@ -66,8 +67,8 @@ class DecisionAgent:
 
     NAME = "Decision"
 
-    def __init__(self, model_name: str = "gpt-4o"):
-        self.llm = ChatOpenAI(model=model_name, temperature=0.3)
+    def __init__(self, llm: BaseChatModel | None = None):
+        self.llm = llm  # None → deterministic / rule-based fallback
 
     def decide(
         self,
@@ -87,80 +88,11 @@ class DecisionAgent:
         Returns:
             StrategyDecision with selected strategy and details.
         """
-        # Build comprehensive context
-        context = f"""
-═══ SECURITY ANALYSIS ═══
-Symbol: {security.symbol} ({security.company_name})
-Sector: {security.sector} / {security.industry}
-Current Price: ${security.current_price:.2f}" if security.current_price else "N/A"
-Options Available: {'Yes' if security.is_optionable else 'No'}
-Market Cap: ${security.market_cap:,.0f}" if security.market_cap else "N/A"
-
-═══ MARKET SENTIMENT ═══
-Fear & Greed: {sentiment.fear_greed.value}/100 ({sentiment.fear_greed.zone.value})
-Market Trend: {sentiment.market_trend}
-Risk Level: {sentiment.risk_assessment}
-News Impact: {sum(1 for n in sentiment.top_news if n.impact == 'Positive')} positive, {sum(1 for n in sentiment.top_news if n.impact == 'Negative')} negative headlines
-
-═══ MARKET REGIME ═══
-Regime: {regime.regime.value} (confidence: {regime.confidence:.0%})
-S&P 500 Trend: {regime.sp500_trend}
-Volatility: {regime.volatility_index:.1%}" if regime.volatility_index else "N/A"
-"""
-
-        if regime.indicators:
-            context += "Indicators: " + ", ".join(f"{k}={v}" for k, v in regime.indicators.items()) + "\n"
-
-        # Options chain summary
-        atm_strike = min(chain.calls, key=lambda c: abs(c.strike - chain.underlying_price)) if chain.calls else None
-        atm_iv = atm_strike.implied_volatility if atm_strike else 0.30
-
-        context += f"""
-═══ OPTIONS CHAIN ═══
-Underlying: ${chain.underlying_price:.2f}
-ATM IV: {atm_iv:.1%}
-Available Strikes: {len(chain.calls)} calls, {len(chain.puts)} puts
-Expirations: {', '.join(chain.expiration_dates[:4])}
-"""
-
-        # Add top 3 ATM/near-ATM contracts
-        if chain.calls:
-            sorted_calls = sorted(chain.calls, key=lambda c: abs(c.strike - chain.underlying_price))[:3]
-            context += "\nNear-ATM Calls:\n"
-            for c in sorted_calls:
-                context += f"  ${c.strike:.2f}: Bid=${c.bid:.2f} Ask=${c.ask:.2f}, IV={c.implied_volatility:.1%}, Delta={c.delta:.2f}, Vol={c.volume}\n"
-
-        if chain.puts:
-            sorted_puts = sorted(chain.puts, key=lambda c: abs(c.strike - chain.underlying_price))[:3]
-            context += "\nNear-ATM Puts:\n"
-            for p in sorted_puts:
-                context += f"  ${p.strike:.2f}: Bid=${p.bid:.2f} Ask=${p.ask:.2f}, IV={p.implied_volatility:.1%}, Delta={p.delta:.2f}, Vol={p.volume}\n"
-
-        context += f"""
-═══ DECISION TASK ═══
-Based on the above context, determine the optimal options strategy for {security.symbol}.
-Respond with:
-STRATEGY: [Call/Put/Strangle/No Trade]
-CONFIDENCE: [0.0-1.0]
-RATIONALE: [2-4 sentences]
-STRIKE: [recommended strike price]
-EXPIRATION: [recommended expiration date]
-MAX RISK: [total premium paid]
-MAX REWARD: [unlimited or specific target]
-BREAKEVEN: [strike +/- premium]
-ALTERNATIVES: [1-2 alternatives considered]
-"""
-
-        try:
-            messages = [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=context),
-            ]
-            response = self.llm.invoke(messages)
-            analysis = str(response.content) if hasattr(response, 'content') else str(response)
-        except Exception as e:
-            # Rule-based fallback
+        # Use deterministic fallback when no LLM is available
+        if self.llm is None:
             analysis = self._fallback_decision(security, regime, chain)
+        else:
+            analysis = self._llm_decision(security, sentiment, regime, chain)
 
         # Parse the response
         strategy = OptionStrategy.NO_TRADE
@@ -271,6 +203,85 @@ ALTERNATIVES: [1-2 alternatives considered]
             alternatives=alternatives,
         )
 
+    def _llm_decision(
+        self,
+        security: SecurityInfo,
+        sentiment: RiskSentimentOutput,
+        regime: RegimeOutput,
+        chain: OptionChain,
+    ) -> str:
+        """Make a strategy decision using the LLM (when available)."""
+        context = f"""
+═══ SECURITY ANALYSIS ═══
+Symbol: {security.symbol} ({security.company_name})
+Sector: {security.sector} / {security.industry}
+Current Price: ${security.current_price:.2f}" if security.current_price else "N/A"
+Options Available: {'Yes' if security.is_optionable else 'No'}
+Market Cap: ${security.market_cap:,.0f}" if security.market_cap else "N/A"
+
+═══ MARKET SENTIMENT ═══
+Fear & Greed: {sentiment.fear_greed.value}/100 ({sentiment.fear_greed.zone.value})
+Market Trend: {sentiment.market_trend}
+Risk Level: {sentiment.risk_assessment}
+News Impact: {sum(1 for n in sentiment.top_news if n.impact == 'Positive')} positive, {sum(1 for n in sentiment.top_news if n.impact == 'Negative')} negative headlines
+
+═══ MARKET REGIME ═══
+Regime: {regime.regime.value} (confidence: {regime.confidence:.0%})
+S&P 500 Trend: {regime.sp500_trend}
+Volatility: {regime.volatility_index:.1%}" if regime.volatility_index else "N/A"
+"""
+
+        if regime.indicators:
+            context += "Indicators: " + ", ".join(f"{k}={v}" for k, v in regime.indicators.items()) + "\n"
+
+        atm_strike = min(chain.calls, key=lambda c: abs(c.strike - chain.underlying_price)) if chain.calls else None
+        atm_iv = atm_strike.implied_volatility if atm_strike else 0.30
+
+        context += f"""
+═══ OPTIONS CHAIN ═══
+Underlying: ${chain.underlying_price:.2f}
+ATM IV: {atm_iv:.1%}
+Available Strikes: {len(chain.calls)} calls, {len(chain.puts)} puts
+Expirations: {', '.join(chain.expiration_dates[:4])}
+"""
+
+        if chain.calls:
+            sorted_calls = sorted(chain.calls, key=lambda c: abs(c.strike - chain.underlying_price))[:3]
+            context += "\nNear-ATM Calls:\n"
+            for c in sorted_calls:
+                context += f"  ${c.strike:.2f}: Bid=${c.bid:.2f} Ask=${c.ask:.2f}, IV={c.implied_volatility:.1%}, Delta={c.delta:.2f}, Vol={c.volume}\n"
+
+        if chain.puts:
+            sorted_puts = sorted(chain.puts, key=lambda c: abs(c.strike - chain.underlying_price))[:3]
+            context += "\nNear-ATM Puts:\n"
+            for p in sorted_puts:
+                context += f"  ${p.strike:.2f}: Bid=${p.bid:.2f} Ask=${p.ask:.2f}, IV={p.implied_volatility:.1%}, Delta={p.delta:.2f}, Vol={p.volume}\n"
+
+        context += f"""
+═══ DECISION TASK ═══
+Based on the above context, determine the optimal options strategy for {security.symbol}.
+Respond with:
+STRATEGY: [Call/Put/Strangle/No Trade]
+CONFIDENCE: [0.0-1.0]
+RATIONALE: [2-4 sentences]
+STRIKE: [recommended strike price]
+EXPIRATION: [recommended expiration date]
+MAX RISK: [total premium paid]
+MAX REWARD: [unlimited or specific target]
+BREAKEVEN: [strike +/- premium]
+ALTERNATIVES: [1-2 alternatives considered]
+"""
+
+        try:
+            messages = [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=context),
+            ]
+            response = self.llm.invoke(messages)  # type: ignore[union-attr]
+            return str(response.content) if hasattr(response, 'content') else str(response)
+        except Exception:
+            return self._fallback_decision(security, regime, chain)
+
     def _fallback_decision(
         self,
         security: SecurityInfo,
@@ -291,8 +302,9 @@ ALTERNATIVES: [1-2 alternatives considered]
         return (
             f"STRATEGY: {strategy}\n"
             f"CONFIDENCE: {regime.confidence:.0%}\n"
-            f"RATIONALE: Rule-based fallback. Regime is {regime.regime.value} "
-            f"(confidence {regime.confidence:.0%}).\n"
+            f"RATIONALE: Deterministic rule-based decision. Regime is {regime.regime.value} "
+            f"(confidence {regime.confidence:.0%}). "
+            f"{'Favouring bullish positions.' if regime.regime == MarketRegime.BULL else 'Favouring bearish positions.' if regime.regime == MarketRegime.BEAR else 'Uncertain direction — treading carefully.'}\n"
             f"STRIKE: ${chain.underlying_price:.2f}\n"
             f"EXPIRATION: {chain.expiration_dates[0] if chain.expiration_dates else '30 DTE'}\n"
             f"ALTERNATIVES: No Trade (preserve capital)"

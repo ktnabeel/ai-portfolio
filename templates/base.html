@@ -10,13 +10,23 @@
 <body class="page-{{ active_page }}">
 
   <header class="top-bar">
-    <div>
+    <a class="brand-lockup" href="/">
+      <span class="brand-mark">{{ config.site.brand_mark }}</span>
+      <span>{{ config.site.brand }}</span>
+    </a>
+    <div class="status-line">
       <span class="status-dot"></span>
       {{ config.site.status_label }}
     </div>
     <nav aria-label="Main navigation">
       <a href="/" class="{% if active_page == 'portfolio' %}nav-active{% endif %}">AI Projects Portfolio</a>
+      <a href="/portfolio-manager" class="{% if active_page == 'portfolio_manager' %}nav-active{% endif %}">Portfolio Manager</a>
+      <a href="/trading" class="{% if active_page == 'trading' %}nav-active{% endif %}">Trading Desk</a>
+      <a href="/financial" class="{% if active_page == 'financial' %}nav-active{% endif %}">Financial Agent</a>
       <a href="/claims" class="nav-claims {% if active_page == 'claims' %}nav-active{% endif %}">Claim Processing</a>
+      <a href="/underwriting" class="{% if active_page == 'underwriting' %}nav-active{% endif %}">Underwriting</a>
+      <a href="/movies" class="{% if active_page == 'movies' %}nav-active{% endif %}">Movies</a>
+      <a href="/sentiment" class="{% if active_page == 'sentiment' %}nav-active{% endif %}">Sentiment</a>
       <a href="{{ config.site.linkedin_url }}" target="_blank" rel="noreferrer">Contact</a>
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark/light theme" title="Toggle theme">
         <span class="theme-icon-light">☀️</span>

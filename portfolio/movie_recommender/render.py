@@ -22,13 +22,18 @@ def _tmdb_image_url(path: str, size: str = "w780") -> str:
 
 MOVIE_CSS = """
 #movie-tab {
-    background: var(--theme-bg, #0d1117);
-    color: var(--theme-ink, #c9d1d9);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid var(--theme-line, #d9e2ec);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+    color: var(--theme-ink, rgba(255,255,255,.92));
     font-family: 'Segoe UI', system-ui, sans-serif;
     padding: 24px;
 }
 #movie-tab h1, #movie-tab h2, #movie-tab h3 {
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
 }
 #movie-tab .movie-grid {
     display: grid;
@@ -38,19 +43,19 @@ MOVIE_CSS = """
 #movie-tab .movie-card {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 14px;
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 16px;
     min-height: 260px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, border-color .25s ease;
-    background: var(--theme-panel, #161b22);
+    background: var(--theme-panel, #373c3f);
 }
 #movie-tab .movie-card:hover {
     transform: translateY(-6px) scale(1.015);
-    border-color: var(--theme-blue, #58a6ff);
-    box-shadow: 0 16px 40px var(--theme-shadow-hover, rgba(0,0,0,.40));
+    border-color: var(--theme-blue, #1ca0f1);
+    box-shadow: 0 24px 58px var(--theme-shadow-hover, rgba(0,0,0,.40));
 }
 #movie-tab .movie-card-bg {
     position: absolute;
@@ -84,7 +89,7 @@ MOVIE_CSS = """
 #movie-tab .movie-card.has-bg .movie-crew,
 #movie-tab .movie-card.has-bg .movie-overview,
 #movie-tab .movie-card.has-bg .explanation {
-    color: #e6edf3;
+    color: rgba(255,255,255,.92);
     text-shadow: 0 1px 4px rgba(0,0,0,0.7);
 }
 #movie-tab .movie-card.has-bg .movie-crew strong {
@@ -93,7 +98,7 @@ MOVIE_CSS = """
 #movie-tab .movie-title {
     font-size: 20px;
     font-weight: 800;
-    color: var(--theme-ink, #c9d1d9);
+    color: var(--theme-ink, rgba(255,255,255,.92));
     margin-bottom: 6px;
     line-height: 1.2;
 }
@@ -105,41 +110,41 @@ MOVIE_CSS = """
 }
 #movie-tab .badge {
     display: inline-flex;
-    border: 1px solid var(--theme-line, #30363d);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
     border-radius: 999px;
     padding: 4px 10px;
     font-size: 12px;
     font-weight: 700;
-    color: var(--theme-muted, #b0b8c1);
+    color: var(--theme-muted, rgba(255,255,255,.68));
 }
 #movie-tab .badge-rating {
-    background: var(--theme-amber, #d2991d);
+    background: var(--theme-amber, #dfab01);
     color: #000;
-    border-color: var(--theme-amber, #d2991d);
+    border-color: var(--theme-amber, #dfab01);
 }
 #movie-tab .badge-year {
-    background: var(--theme-green, #3fb950);
+    background: var(--theme-green, #37c78a);
     color: #000;
-    border-color: var(--theme-green, #3fb950);
+    border-color: var(--theme-green, #37c78a);
 }
 #movie-tab .badge-score {
-    background: var(--theme-blue, #58a6ff);
+    background: var(--theme-blue, #1ca0f1);
     color: #000;
-    border-color: var(--theme-blue, #58a6ff);
+    border-color: var(--theme-blue, #1ca0f1);
 }
 #movie-tab .movie-overview {
-    color: var(--theme-muted, #b0b8c1);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     font-size: 14px;
     line-height: 1.6;
     margin-bottom: 12px;
 }
 #movie-tab .movie-crew {
     font-size: 13px;
-    color: var(--theme-muted, #b0b8c1);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     margin-bottom: 4px;
 }
 #movie-tab .movie-crew strong {
-    color: var(--theme-green, #3fb950);
+    color: var(--theme-green, #37c78a);
 }
 #movie-tab .movie-genres {
     display: flex;
@@ -148,29 +153,29 @@ MOVIE_CSS = """
     margin-top: 8px;
 }
 #movie-tab .genre-tag {
-    border-radius: 6px;
+    border-radius: 999px;
     padding: 3px 8px;
     font-size: 11px;
     font-weight: 700;
-    background: var(--theme-tag-bg, #21262d);
-    color: var(--theme-tag-text, #e6edf3);
+    background: var(--theme-tag-bg, #454b4e);
+    color: var(--theme-tag-text, rgba(255,255,255,.86));
 }
 #movie-tab .score-bar {
     height: 6px;
     border-radius: 3px;
-    background: var(--theme-line, #30363d);
+    background: var(--theme-line, rgba(255,255,255,.14));
     margin: 8px 0 4px;
     overflow: hidden;
 }
 #movie-tab .score-fill {
     height: 100%;
     border-radius: 3px;
-    background: linear-gradient(90deg, var(--theme-green, #3fb950), var(--theme-blue, #58a6ff));
+    background: linear-gradient(90deg, var(--theme-green, #37c78a), var(--theme-blue, #1ca0f1));
     transition: width .4s ease;
 }
 #movie-tab .explanation {
     font-size: 12px;
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
     font-style: italic;
     margin-top: 4px;
 }
@@ -181,33 +186,33 @@ MOVIE_CSS = """
     flex-wrap: wrap;
 }
 #movie-tab .stat-item {
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 8px;
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
     padding: 12px 18px;
-    background: var(--theme-panel, #161b22);
+    background: var(--theme-panel, #373c3f);
     text-align: center;
 }
 #movie-tab .stat-value {
     font-size: 24px;
     font-weight: 900;
-    color: var(--theme-green, #3fb950);
+    color: var(--theme-green, #37c78a);
 }
 #movie-tab .stat-label {
     font-size: 12px;
-    color: var(--theme-muted, #b0b8c1);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     text-transform: uppercase;
     font-weight: 700;
 }
 #movie-tab .pref-section {
-    background: var(--theme-surface, #1c2128);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 10px;
+    background: var(--theme-surface, #454b4e);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 16px;
     padding: 16px;
     margin: 16px 0;
 }
 #movie-tab .pref-title {
     font-weight: 800;
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
     margin-bottom: 8px;
 }
 #movie-tab .pref-chips {
@@ -220,7 +225,7 @@ MOVIE_CSS = """
     padding: 4px 12px;
     font-size: 12px;
     font-weight: 700;
-    background: var(--theme-blue, #58a6ff);
+    background: var(--theme-blue, #1ca0f1);
     color: #000;
 }
 """
@@ -253,13 +258,13 @@ def _get_recommender() -> MovieRecommender:
 def _render_recommendations(query: str, top_k: int) -> str:
     """Process a recommendation query and return HTML."""
     if not query or not query.strip():
-        return "<p style='color:#f85149'>Please describe what kind of movies you're looking for.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please describe what kind of movies you're looking for.</p>"
 
     try:
         rec = _get_recommender()
         result = rec.recommend(query, top_k=top_k)
     except Exception as e:
-        return f"<p style='color:#f85149'>Error: {escape_html(str(e))}</p>"
+        return f"<p style='color:var(--theme-red,#ff7369)'>Error: {escape_html(str(e))}</p>"
 
     # Preferences section
     pref_html = _render_preferences(result.preferences)
@@ -356,7 +361,7 @@ def _render_preferences(pref: UserPreference) -> str:
     if pref.year_range != (1900, 2030):
         chips += f"<span class='pref-chip'>📅 {pref.year_range[0]}–{pref.year_range[1]}</span>"
     if pref.disliked_genres:
-        chips += "".join(f"<span class='pref-chip' style='background:#f85149'>🚫 {escape_html(g)}</span>" for g in pref.disliked_genres[:3])
+        chips += "".join(f"<span class='pref-chip' style='background:var(--theme-red,#ff7369)'>🚫 {escape_html(g)}</span>" for g in pref.disliked_genres[:3])
 
     if not chips.strip():
         chips = "<span class='pref-chip'>No preferences detected — showing top picks</span>"

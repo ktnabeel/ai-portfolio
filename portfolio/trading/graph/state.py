@@ -31,6 +31,9 @@ class TradingState(TypedDict):
 
     # Input
     symbol: str  # User-provided stock symbol
+    llm_provider: str  # "openai" or "anthropic"
+    llm_model: str  # e.g. "gpt-4o", "claude-sonnet-4-20250514"
+    openai_api_key: str  # User-provided API key (empty = use env var)
 
     # Agent 1: Security Identification
     security: Optional[SecurityInfo]
@@ -49,6 +52,10 @@ class TradingState(TypedDict):
 
     # Agent 5: Execution
     execution: Optional[ExecutionResult]
+
+    # Human-in-the-loop approval
+    user_approved: bool  # Whether user has approved the execution
+    user_rejection_reason: str  # Reason if trade was rejected by user
 
     # Flow control
     error: str

@@ -1,23 +1,23 @@
+import json
 from html import escape
 from typing import Any
 
 from .config import load_config
 from .models import Project
 
-# Map project titles to Gradio tab IDs for contextual in-app navigation.
-_TAB_LINKS: dict[str, str] = {
-    "TradingAgents Manager": "trading_agents",
-    "Trading Agents": "trading",
-    "Claim Processing": "claim",
-    "Finance Planning": "financial",
-    "Movie Recommendations": "movie",
-    "Product Review Sentiment Analyzer": "sentiment",
-}
+def _tab_links_from_config(config: dict[str, Any]) -> dict[str, str]:
+    """Return project-title → tab-id mapping from config's project_tab_links."""
+    return config.get("project_tab_links", {})
+
+
+def _tab_labels_from_config(config: dict[str, Any]) -> dict[str, str]:
+    """Return tab-id → display-label mapping from config's tabs."""
+    return config.get("tabs", {})
 
 # Rich inline detail content for each project — used in static (Vercel) deployment
 # to provide self-contained expandable cards with no external links.
 _PROJECT_DETAILS: dict[str, str] = {
-    "TradingAgents Manager": """
+    "Portfolio Manager": """
 <div class="detail-grid">
   <div class="detail-section">
     <h4>Architecture</h4>
@@ -43,7 +43,7 @@ _PROJECT_DETAILS: dict[str, str] = {
     <p>Production-grade portfolio management API that orchestrates specialized LLM agents to analyze stocks across market data, technicals, fundamentals, sentiment, and risk — then synthesizes a structured trading decision with rationale.</p>
   </div>
 </div>""",
-    "Trading Agents": """
+    "Trading Desk": """
 <div class="detail-grid">
   <div class="detail-section">
     <h4>Architecture</h4>
@@ -97,25 +97,27 @@ _PROJECT_DETAILS: dict[str, str] = {
     "Insurance Underwriting Agent": """
 <div class="detail-grid">
   <div class="detail-section">
-    <h4>Status</h4>
-    <p>Template — ready for customization with your underwriting rules and policy data.</p>
+    <h4>Architecture</h4>
+    <p>Four-dimension risk assessment pipeline: Health → Occupation → Lifestyle → Financial. Each dimension applies rule-based pattern matching to identify risk factors, computes an aggregate risk score (0–100), and drives a structured underwriting decision.</p>
   </div>
   <div class="detail-section">
-    <h4>Planned Capabilities</h4>
+    <h4>Key Capabilities</h4>
     <ul>
-      <li>Risk review automation with configurable rule engine</li>
-      <li>Policy context retrieval and comparison</li>
-      <li>LLM-powered recommendation generation</li>
-      <li>Multi-factor risk scoring</li>
+      <li>NLP extraction: applicant name, age, occupation, income, coverage, product type</li>
+      <li>40+ risk factor rules across health, occupation, lifestyle, and financial dimensions</li>
+      <li>Aggregate risk scoring with severity-weighted calculation (0–100)</li>
+      <li>Policy context builder: product matching, premium band, exclusions, riders</li>
+      <li>Decision engine: Approve / Decline / Refer / Request Info with chain-of-thought</li>
+      <li>Batch processing with summary statistics</li>
     </ul>
   </div>
   <div class="detail-section">
     <h4>Stack</h4>
-    <p>Python, LLM agents, underwriting rules, Gradio UI</p>
+    <p>Python, regex NLP, rule-based inference, risk scoring engine, Gradio UI</p>
   </div>
   <div class="detail-section">
     <h4>AI Application</h4>
-    <p>Agentic assistant that reviews applications against underwriting guidelines, surfaces risk factors, and generates structured recommendations for underwriter review.</p>
+    <p>Agentic assistant that extracts structured data from free-text applications, evaluates 40+ risk rules across four dimensions, computes severity-weighted risk scores, and generates auditable chain-of-thought recommendations — reducing underwriter cognitive load while maintaining explainability.</p>
   </div>
 </div>""",
     "Product Review Sentiment Analyzer": """
@@ -197,52 +199,53 @@ _PROJECT_DETAILS: dict[str, str] = {
 }
 
 
-def _tab_link(target: str, label: str, class_name: str = "") -> str:
-    class_attr = f' class="{class_name}"' if class_name else ""
-    return f'<a href="#" data-tab-target="{escape(target)}"{class_attr}>{escape(label)}</a>'
+def _tab_link(display_label: str, link_label: str, class_name: str = "") -> str:
+    """Generate a button that navigates to the matching Gradio tab."""
+    class_attr = ' class="' + class_name + '"' if class_name else ""
+    js_label = json.dumps(display_label)
+    js = (
+        "(function(){"
+        f"var label={js_label};"
+        "var clean=function(s){return (s||'').replace(/\\s+/g,' ').trim();};"
+        "var wanted=clean(label);"
+        "var tabs=Array.from(document.querySelectorAll('[role=\"tab\"],button'));"
+        "var b=tabs.find(function(x){return clean(x.textContent)===wanted;})||"
+        "tabs.find(function(x){return clean(x.textContent).indexOf(wanted)>=0;});"
+        "if(b){b.click();setTimeout(function(){b.scrollIntoView({block:'nearest',inline:'nearest'});},50);}"
+        "})();return false"
+    )
+    return (
+        '<button type="button" onclick="'
+        + escape(js)
+        + '"'
+        + class_attr
+        + '>'
+        + escape(link_label)
+        + "</button>"
+    )
 
 
 def render_page(projects: list[Project], mode: str = "static", config: dict[str, Any] | None = None) -> str:
     config = config or load_config()
     site = config["site"]
-    page = _render_shell(_render_project_grid(projects, mode=mode), config, mode=mode)
-    nav_js = """
-    (function() {
-      const initNav = function() {
-        document.addEventListener('click', function(event) {
-          const link = event.target.closest('[data-tab-target]');
-          if (!link) return;
-          event.preventDefault();
-          const labels = {
-            financial: 'Financial Agent',
-            trading: 'Trading',
-            trading_agents: 'TradingAgents Manager',
-            claim: 'Claim Processing',
-            movie: 'Movie Recommendations',
-            sentiment: 'Sentiment Analyzer'
-          };
-          const label = labels[link.dataset.tabTarget];
-          if (!label) return;
-          const tabs = Array.from(document.querySelectorAll('button, [role="tab"]'));
-          const target = tabs.find(function(tab) {
-            return tab.textContent && tab.textContent.trim().indexOf(label) >= 0;
-          });
-          if (target) {
-            target.click();
-            target.scrollIntoView({block: 'nearest', inline: 'nearest'});
-          }
-        });
-      };
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initNav);
-      } else {
-        initNav();
-      }
-    })();
-    """
+    tab_links = _tab_links_from_config(config)
+    tab_labels = _tab_labels_from_config(config)
+    page = _render_shell(
+        _render_project_grid(projects, mode=mode, tab_links=tab_links, tab_labels=tab_labels),
+        config,
+        mode=mode,
+    )
 
     if mode == "gradio":
-        return f"<style>{_css()}</style><script>(function(){{var t;try{{t=localStorage.getItem('theme')}}catch(e){{}}if(t)document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)document.documentElement.setAttribute('data-theme','dark');}})(); {nav_js}</script>{page}"
+        theme_init_js = (
+            "<script>(function(){"
+            "var t;try{t=localStorage.getItem('theme')}catch(e){};"
+            "if(t){document.documentElement.setAttribute('data-theme',t)}"
+            "else if(window.matchMedia('(prefers-color-scheme:dark)').matches)"
+            "{document.documentElement.setAttribute('data-theme','dark')};"
+            "})();</script>"
+        )
+        return f"<style>{_css()}</style>{theme_init_js}{page}"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -251,6 +254,17 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{escape(site["meta_description"])}">
   <title>{escape(site["title"])}</title>
+  <script>
+    (function(){{
+      var t;
+      try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
+      if (t) {{
+        document.documentElement.setAttribute('data-theme', t);
+      }} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) {{
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }}
+    }})();
+  </script>
   <style>{_css()}</style>
 </head>
 <body>
@@ -288,9 +302,19 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
 def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
     site = config["site"]
     capabilities = config["capabilities"]
+    stats = config.get("stats", [])
+
     capabilities_html = "\n".join(
         f"<div><strong>{escape(str(item['title']))}</strong><span>{escape(str(item['description']))}</span></div>"
         for item in capabilities
+    )
+
+    stats_html = "\n".join(
+        f"""<div class="stat-item">
+          <span class="stat-value">{escape(str(item['value']))}</span>
+          <span class="stat-label">{escape(str(item['label']))}</span>
+        </div>"""
+        for item in stats
     )
 
     return f"""
@@ -315,6 +339,10 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
         <p>{escape(site["intro_copy"])}</p>
       </section>
 
+      <section class="stats-strip" aria-label="Key stats">
+        {stats_html}
+      </section>
+
       <section class="capability-strip" aria-label="Capabilities">
         {capabilities_html}
       </section>
@@ -330,7 +358,12 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
   </main>"""
 
 
-def _render_project_grid(projects: list[Project], mode: str) -> str:
+def _render_project_grid(
+    projects: list[Project],
+    mode: str,
+    tab_links: dict[str, str] | None = None,
+    tab_labels: dict[str, str] | None = None,
+) -> str:
     if not projects:
         return """
         <div class="empty-state">
@@ -339,22 +372,36 @@ def _render_project_grid(projects: list[Project], mode: str) -> str:
         </div>
 """
 
-    cards = "\n".join(_render_project_card(index, project, mode=mode) for index, project in enumerate(projects, start=1))
+    cards = "\n".join(
+        _render_project_card(index, project, mode=mode, tab_links=tab_links, tab_labels=tab_labels)
+        for index, project in enumerate(projects, start=1)
+    )
     return f'<div class="project-list">{cards}</div>'
 
 
-def _render_project_card(index: int, project: Project, mode: str) -> str:
+def _render_project_card(
+    index: int,
+    project: Project,
+    mode: str,
+    tab_links: dict[str, str] | None = None,
+    tab_labels: dict[str, str] | None = None,
+) -> str:
+    if tab_links is None:
+        tab_links = {}
+    if tab_labels is None:
+        tab_labels = {}
     tags = "".join(f"<span>{escape(tag)}</span>" for tag in project.tags)
     links = []
     if project.github_url:
-        links.append(f'<a href="{escape(project.github_url)}" target="_blank" rel="noreferrer">GitHub</a>')
+        links.append(f'<a href="{escape(project.github_url)}" target="_blank" rel="noreferrer" class="card-link card-link-github">GitHub</a>')
     if project.demo_url:
-        links.append(f'<a href="{escape(project.demo_url)}" target="_blank" rel="noreferrer">Demo</a>')
+        links.append(f'<a href="{escape(project.demo_url)}" target="_blank" rel="noreferrer" class="card-link card-link-external">Demo</a>')
 
-    # Contextual in-app tab navigation for Built projects inside the Gradio app.
-    tab_label = _TAB_LINKS.get(project.title)
-    if mode == "gradio" and not project.github_url and not project.demo_url and project.status == "Built" and tab_label:
-        links.append(_tab_link(tab_label, "Demo"))
+    # In-app tab navigation for all Built projects with a mapped tab (gradio mode).
+    tab_id = tab_links.get(project.title)
+    if mode == "gradio" and project.status == "Built" and tab_id:
+        display_label = tab_labels.get(tab_id, tab_id)
+        links.append(_tab_link(display_label, "Open", "card-link card-link-demo"))
 
     # Static deployment: expandable inline details instead of external links.
     expand_html = ""
@@ -398,59 +445,66 @@ def _css() -> str:
 /* ===== Light Theme (default) ===== */
 :root {
   color-scheme: light;
-  --theme-bg: #f4f6f4;
+  --theme-bg: #eef3f8;
   --theme-panel: #ffffff;
-  --theme-ink: #121413;
-  --theme-muted: #68716d;
-  --theme-line: #e1e5e2;
-  --theme-green: #12785d;
-  --theme-blue: #315f9f;
-  --theme-amber: #a86c22;
-  --theme-surface: #edf5f1;
-  --theme-tag-bg: #f0f3f1;
-  --theme-tag-text: #34403b;
-  --theme-shadow: rgba(18,20,19,.04);
-  --theme-shadow-hover: rgba(18,20,19,.08);
-  --theme-card-hover-border: rgba(18,120,93,.35);
-  --theme-status-glow: rgba(18,120,93,.12);
-  --theme-green-hover: #0d5e48;
-  --theme-blue-hover: #1f4270;
+  --theme-ink: #101828;
+  --theme-muted: #667085;
+  --theme-line: #d9e2ec;
+  --theme-green: #0f8f6e;
+  --theme-blue: #2563eb;
+  --theme-amber: #b7791f;
+  --theme-surface: #f8fafc;
+  --theme-tag-bg: #eaf2ff;
+  --theme-tag-text: #1d4ed8;
+  --theme-shadow: rgba(16,24,40,.08);
+  --theme-shadow-hover: rgba(16,24,40,.18);
+  --theme-card-hover-border: rgba(37,99,235,.35);
+  --theme-status-glow: rgba(15,143,110,.16);
+  --theme-green-hover: #0b7057;
+  --theme-blue-hover: #1d4ed8;
   --theme-panel-rgb: 255, 255, 255;
 }
 
 /* ===== Dark Theme ===== */
 [data-theme="dark"] {
   color-scheme: dark;
-  --theme-bg: #0d1117;
-  --theme-panel: #161b22;
-  --theme-ink: #e6edf3;
-  --theme-muted: #8b949e;
-  --theme-line: #30363d;
-  --theme-green: #3fb950;
-  --theme-blue: #58a6ff;
-  --theme-amber: #d2991d;
-  --theme-surface: #21262d;
-  --theme-tag-bg: #21262d;
-  --theme-tag-text: #c9d1d9;
-  --theme-shadow: rgba(0,0,0,.40);
-  --theme-shadow-hover: rgba(0,0,0,.60);
-  --theme-card-hover-border: rgba(63,185,80,.45);
-  --theme-status-glow: rgba(63,185,80,.2);
-  --theme-green-hover: #4fdc63;
-  --theme-blue-hover: #79b8ff;
-  --theme-panel-rgb: 22, 27, 34;
+  --theme-bg: #2f3437;
+  --theme-panel: #373c3f;
+  --theme-ink: rgba(255,255,255,.92);
+  --theme-muted: rgba(255,255,255,.68);
+  --theme-line: rgba(255,255,255,.14);
+  --theme-green: #37c78a;
+  --theme-blue: #1ca0f1;
+  --theme-amber: #dfab01;
+  --theme-surface: #454b4e;
+  --theme-tag-bg: #454b4e;
+  --theme-tag-text: rgba(255,255,255,.86);
+  --theme-shadow: rgba(0,0,0,.28);
+  --theme-shadow-hover: rgba(0,0,0,.45);
+  --theme-card-hover-border: rgba(28,160,241,.52);
+  --theme-status-glow: rgba(55,199,138,.22);
+  --theme-green-hover: #4ee39f;
+  --theme-blue-hover: #60bdf5;
+  --theme-panel-rgb: 55, 60, 63;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 body {
   margin: 0;
-  background: var(--theme-bg);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(37,99,235,.12), transparent 34%),
+    linear-gradient(180deg, #f8fbff 0%, var(--theme-bg) 48%, #e8eef6 100%);
   color: var(--theme-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition: background-color .3s ease, color .3s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(28,160,241,.12), transparent 34%),
+    linear-gradient(180deg, #252a2d 0%, var(--theme-bg) 54%, #272d30 100%);
 }
 a { color: inherit; }
 
@@ -471,7 +525,10 @@ h1, h2, h3, p { margin-top: 0; }
 
 .workspace {
   min-width: 0;
-  padding: 16px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 18px;
 }
 .top-bar {
   position: sticky;
@@ -484,12 +541,12 @@ h1, h2, h3, p { margin-top: 0; }
   flex-wrap: nowrap;
   gap: 12px;
   border: 1px solid var(--theme-line);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 0 16px;
-  background: rgba(var(--theme-panel-rgb), 0.72);
+  background: rgba(var(--theme-panel-rgb), 0.82);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
+  box-shadow: 0 16px 44px var(--theme-shadow), 0 1px 2px rgba(16,24,40,.06);
   transition: box-shadow .35s ease, background .35s ease, border-color .35s ease, transform .35s ease;
 }
 .top-bar div {
@@ -560,8 +617,8 @@ h1, h2, h3, p { margin-top: 0; }
 [data-theme="dark"] .theme-icon-dark  { opacity: 1; transform: scale(1); }
 
 .intro {
-  padding: 40px 8px 24px;
-  max-width: 940px;
+  padding: 48px 8px 30px;
+  max-width: 980px;
 }
 .intro h2 {
   margin-bottom: 18px;
@@ -575,6 +632,45 @@ h1, h2, h3, p { margin-top: 0; }
   font-size: 18px;
   line-height: 1.75;
 }
+
+/* ===== Stats Strip ===== */
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--theme-line);
+  border-radius: 14px;
+  padding: 16px 20px;
+  background: rgba(var(--theme-panel-rgb), .9);
+  box-shadow: 0 14px 34px var(--theme-shadow);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.stat-item:hover {
+  transform: translateY(-3px);
+  border-color: var(--theme-card-hover-border);
+  box-shadow: 0 8px 24px var(--theme-shadow-hover);
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 950;
+  color: var(--theme-green);
+  line-height: 1.1;
+}
+.stat-label {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--theme-muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
 .capability-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -584,10 +680,10 @@ h1, h2, h3, p { margin-top: 0; }
 .capability-strip div {
   min-height: 100px;
   border: 1px solid var(--theme-line);
-  border-radius: 12px;
-  padding: 16px;
-  background: var(--theme-panel);
-  box-shadow: 0 2px 12px var(--theme-shadow);
+  border-radius: 14px;
+  padding: 18px;
+  background: rgba(var(--theme-panel-rgb), .9);
+  box-shadow: 0 14px 34px var(--theme-shadow);
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
 }
 .capability-strip div:hover {
@@ -623,7 +719,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .project-list {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 .project-card {
   display: grid;
@@ -631,25 +727,27 @@ h1, h2, h3, p { margin-top: 0; }
   gap: 22px;
   align-items: center;
   border: 1px solid var(--theme-line);
-  border-radius: 14px;
-  padding: 16px;
-  background: var(--theme-panel);
-  box-shadow: 0 4px 20px var(--theme-shadow);
+  border-radius: 16px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.96)),
+    var(--theme-panel);
+  box-shadow: 0 18px 42px var(--theme-shadow);
   transition: border-color .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
 }
 .project-card:hover {
-  transform: translateY(-6px) scale(1.008);
+  transform: translateY(-5px);
   border-color: var(--theme-card-hover-border);
-  box-shadow: 0 20px 48px var(--theme-shadow-hover);
+  box-shadow: 0 26px 64px var(--theme-shadow-hover);
 }
 .project-number {
   width: 54px;
   height: 54px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
-  background: var(--theme-surface);
-  color: var(--theme-green);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(15,143,110,.12));
+  color: var(--theme-blue);
   font-weight: 950;
 }
 .project-meta {
@@ -685,7 +783,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .tag-row span {
   border-radius: 999px;
-  padding: 6px 9px;
+  padding: 6px 10px;
   background: var(--theme-tag-bg);
   color: var(--theme-tag-text);
   font-size: 12px;
@@ -695,10 +793,59 @@ h1, h2, h3, p { margin-top: 0; }
   min-width: 128px;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
   color: var(--theme-blue);
   font-size: 14px;
+  flex-wrap: wrap;
 }
+
+/* ===== Card action links ===== */
+.card-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.card-link-github {
+  border: 1px solid var(--theme-line);
+  background: var(--theme-surface);
+  color: var(--theme-ink);
+}
+.card-link-github:hover {
+  border-color: var(--theme-blue);
+  background: var(--theme-blue);
+  color: #fff;
+}
+.card-link-external {
+  border: 1px solid var(--theme-line);
+  background: var(--theme-surface);
+  color: var(--theme-amber);
+}
+.card-link-external:hover {
+  border-color: var(--theme-amber);
+  background: var(--theme-amber);
+  color: #fff;
+}
+.card-link-demo {
+  border: 1px solid var(--theme-green);
+  background: var(--theme-green);
+  color: #fff;
+}
+.card-link-demo:hover {
+  background: var(--theme-green-hover);
+  border-color: var(--theme-green-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(18,120,93,.25);
+}
+
 .muted { color: var(--theme-muted); font-weight: 750; }
 
 /* ===== Expandable project card details ===== */
@@ -707,7 +854,7 @@ h1, h2, h3, p { margin-top: 0; }
   align-items: center;
   gap: 6px;
   border: 1px solid var(--theme-line);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 16px;
   background: var(--theme-surface);
   color: var(--theme-green);

@@ -9,47 +9,54 @@ from .models import FraudRisk, ClaimSeverity, RoutingDecision
 
 CLAIM_DARK_CSS = """
 #claim-tab {
-    background: var(--theme-bg, #0d1117);
-    color: var(--theme-ink, #c9d1d9);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid var(--theme-line, #d9e2ec);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+    color: var(--theme-ink, rgba(255,255,255,.92));
     font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
 }
 #claim-tab h1, #claim-tab h2, #claim-tab h3 {
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
 }
 .result-approve {
-    color: #3fb950;
+    color: var(--theme-green, #37c78a);
     font-weight: bold;
     font-size: 1.2em;
 }
 .result-deny {
-    color: #f85149;
+    color: var(--theme-red, #ff7369);
     font-weight: bold;
     font-size: 1.2em;
 }
 .result-review {
-    color: #d2991d;
+    color: var(--theme-amber, #dfab01);
     font-weight: bold;
     font-size: 1.2em;
 }
 .result-escalate {
-    color: #f0883e;
+    color: var(--theme-orange, #ff9a56);
     font-weight: bold;
     font-size: 1.2em;
 }
 .claim-metric-card {
-    background: var(--theme-panel, #161b22);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 8px;
-    padding: 12px;
-    margin: 6px 0;
+    background: var(--theme-panel, #373c3f);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
+    padding: 16px;
+    margin: 10px 0;
+    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
-.fraud-low { color: #3fb950; }
-.fraud-medium { color: #d2991d; }
-.fraud-high { color: #f85149; }
-.severity-low { color: #3fb950; }
-.severity-medium { color: #d2991d; }
-.severity-high { color: #f0883e; }
-.severity-critical { color: #f85149; }
+.fraud-low { color: var(--theme-green, #37c78a); }
+.fraud-medium { color: var(--theme-amber, #dfab01); }
+.fraud-high { color: var(--theme-red, #ff7369); }
+.severity-low { color: var(--theme-green, #37c78a); }
+.severity-medium { color: var(--theme-amber, #dfab01); }
+.severity-high { color: var(--theme-orange, #ff9a56); }
+.severity-critical { color: var(--theme-red, #ff7369); }
 .extracted-table {
     width: 100%;
     border-collapse: collapse;
@@ -60,7 +67,7 @@ CLAIM_DARK_CSS = """
     vertical-align: top;
 }
 .extracted-table td:first-child {
-    color: var(--theme-muted, #8b949e);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     font-weight: 600;
     white-space: nowrap;
     width: 120px;
@@ -91,7 +98,7 @@ SEVERITY_COLORS = {
 def _process_single(claim_text: str) -> str:
     """Process a single claim and return HTML result."""
     if not claim_text or not claim_text.strip():
-        return "<p style='color:#f85149'>Please enter claim details.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please enter claim details.</p>"
 
     processor = ClaimProcessor()
     result = processor.process_claim(claim_text)
@@ -147,12 +154,12 @@ def _process_single(claim_text: str) -> str:
 def _process_batch(claims_text: str) -> str:
     """Process multiple claims and return summary HTML."""
     if not claims_text or not claims_text.strip():
-        return "<p style='color:#f85149'>Please enter claim details.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please enter claim details.</p>"
 
     # Split by double newline or separator
     claims = [c.strip() for c in re.split(r"\n\s*\n|---+", claims_text) if c.strip()]
     if not claims:
-        return "<p style='color:#f85149'>No claims found.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>No claims found.</p>"
 
     processor = ClaimProcessor()
     rows = ""

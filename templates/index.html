@@ -31,6 +31,10 @@
         <div class="tag-row">{% for tag in p.tags %}<span>{{ tag }}</span>{% endfor %}</div>
       </div>
       <div class="project-links">
+        {% set tab_id = config.project_tab_links.get(p.title) %}
+        {% if tab_id and app_routes.get(tab_id) %}
+        <a href="{{ app_routes.get(tab_id) }}">Open App</a>
+        {% endif %}
         {% if p.github_url %}<a href="{{ p.github_url }}" target="_blank" rel="noreferrer">GitHub</a>{% endif %}
         {% if p.demo_url %}<a href="{{ p.demo_url }}" target="_blank" rel="noreferrer">Demo</a>{% endif %}
         {% if p.title in project_details %}

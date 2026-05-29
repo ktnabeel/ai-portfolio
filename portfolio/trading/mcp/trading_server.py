@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
 
-from .broker import execute_paper_trade, get_account, reset_account
+from .broker import close_position, execute_paper_trade, get_account, reset_account
 from ..models import (
     OrderConfirmation,
     OrderRequest,
@@ -123,6 +123,24 @@ MCP_TOOLS = [
             "required": [],
         },
     },
+    {
+        "name": "close_position",
+        "description": "Close an open position and realise its P&L. Returns the trade record.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "position_id": {
+                    "type": "string",
+                    "description": "The position ID to close (e.g., 'POS-ABCD1234').",
+                },
+                "exit_price": {
+                    "type": "number",
+                    "description": "Optional exit price per contract (uses current price if omitted).",
+                },
+            },
+            "required": ["position_id"],
+        },
+    },
 ]
 
 
@@ -150,7 +168,9 @@ class MCPTradingServer:
             "cancel_order": self._handle_cancel_order,
             "get_order_history": self._handle_order_history,
             "reset_account": self._handle_reset_account,
+            "close_position": self._handle_close_position,
         }
+        self.call_log: list[dict[str, Any]] = []
 
     @property
     def tool_definitions(self) -> list[dict]:
@@ -169,15 +189,47 @@ class MCPTradingServer:
         """
         handler = self._tools.get(name)
         if handler is None:
+            self.call_log.append({
+                "tool": name, "status": "failed",
+                "detail": f"Unknown tool. Available: {list(self._tools.keys())}",
+            })
             return MCPResponse(
                 success=False,
                 error=f"Unknown tool: '{name}'. Available tools: {list(self._tools.keys())}",
             )
         try:
             result = handler(arguments)
+            detail = self._summarise_call(name, arguments, result)
+            self.call_log.append({"tool": name, "status": "success", "detail": detail})
             return MCPResponse(success=True, data=result)
         except Exception as e:
+            self.call_log.append({"tool": name, "status": "failed", "detail": str(e)})
             return MCPResponse(success=False, error=str(e))
+
+    def _summarise_call(self, name: str, args: dict[str, Any], result: Any) -> str:
+        """Build a human-readable one-line summary of the tool call."""
+        if name == "get_account_status":
+            pos = result.get("position_count", 0) if isinstance(result, dict) else "?"
+            return f"Account: {pos} position(s)"
+        if name == "place_option_order":
+            status = result.get("status", "?") if isinstance(result, dict) else "?"
+            symbol = args.get("symbol", "?")
+            strategy = args.get("strategy", "?")
+            return f"{strategy} on {symbol} → {status}"
+        if name == "close_position":
+            ok = result.get("success", False) if isinstance(result, dict) else False
+            pid = args.get("position_id", "?")
+            return f"Close {pid}: {'OK' if ok else 'Failed'}"
+        if name == "reset_account":
+            return "Account reset to initial state"
+        return "OK"
+
+    @property
+    def last_calls(self) -> list[dict[str, Any]]:
+        """Return call log entries since last drain."""
+        calls = list(self.call_log)
+        self.call_log.clear()
+        return calls
 
     # ── Tool Handlers ──────────────────────────────────────────────────
 
@@ -280,3 +332,8 @@ class MCPTradingServer:
             "status": "Reset",
             "notes": "Paper trading account reset to $100,000 cash, no positions.",
         }
+
+    def _handle_close_position(self, args: dict) -> dict:
+        position_id = args.get("position_id", "")
+        exit_price = args.get("exit_price")
+        return close_position(position_id, exit_price)

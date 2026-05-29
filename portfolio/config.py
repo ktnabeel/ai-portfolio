@@ -30,9 +30,101 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "linkedin_url": "https://www.linkedin.com/",
     },
     "stats": [
-        {"label": "Projects", "value": "6"},
+        {"label": "Projects", "value": "7"},
         {"label": "Stack", "value": "Python"},
         {"label": "Deploy", "value": "HF + Vercel"},
+    ],
+    "tabs": {
+        "trading_agents": "Portfolio Manager",
+        "underwriting": "Insurance Underwriting",
+        "claim": "Claim Processing",
+        "movie": "Movie Recommendations",
+        "sentiment": "Sentiment Analyzer",
+        "financial": "Financial Agent",
+        "trading": "Trading Desk",
+    },
+    "project_tab_links": {
+        "Portfolio Manager": "trading_agents",
+        "Trading Desk": "trading",
+        "Claim Processing": "claim",
+        "Insurance Underwriting Agent": "underwriting",
+        "Finance Planning": "financial",
+        "Movie Recommendations": "movie",
+        "Product Review Sentiment Analyzer": "sentiment",
+    },
+    "project_demo_urls": {
+        "Portfolio Manager": "",
+        "Trading Desk": "",
+        "Claim Processing": "",
+        "Insurance Underwriting Agent": "",
+        "Product Review Sentiment Analyzer": "",
+        "Finance Planning": "",
+        "Movie Recommendations": "",
+    },
+    "projects": [
+        {
+            "key": "trading_agents",
+            "title": "Portfolio Manager",
+            "description": "Multi-agent portfolio manager powered by LangGraph — FastAPI service orchestrating Security, Sentiment, Regime, Decision, and Execution agents for market analysis.",
+            "tech_stack": "Python, FastAPI, LangGraph, yfinance, Pydantic",
+            "status": "Built",
+            "tags": ["Agents", "Finance", "FastAPI", "LangGraph"],
+            "tab": "trading_agents",
+        },
+        {
+            "key": "trading",
+            "title": "Trading Desk",
+            "description": "Multi-agent options trading desk with Black-Scholes pricing, MCP paper-trading server, and LangGraph-orchestrated agent pipeline for market analysis.",
+            "tech_stack": "Python, LangGraph, LangChain, yfinance, Black-Scholes",
+            "status": "Built",
+            "tags": ["Agents", "Finance", "Trading", "Options"],
+            "tab": "trading",
+        },
+        {
+            "key": "claim",
+            "title": "Claim Processing",
+            "description": "AI-assisted workflow for reviewing claims, extracting details, and routing decisions.",
+            "tech_stack": "Python, document AI, workflow automation",
+            "status": "Built",
+            "tags": ["Insurance", "Automation", "Documents"],
+            "tab": "claim",
+        },
+        {
+            "key": "underwriting",
+            "title": "Insurance Underwriting Agent",
+            "description": "Agentic underwriting assistant that extracts application data, scans for risk factors across health/occupation/lifestyle/financial dimensions, builds policy context, and generates structured decisions with chain-of-thought reasoning.",
+            "tech_stack": "Python, rule-based NLP, underwriting risk engine, Gradio",
+            "status": "Built",
+            "tags": ["Insurance", "Agents", "Risk"],
+            "tab": "underwriting",
+        },
+        {
+            "key": "sentiment",
+            "title": "Product Review Sentiment Analyzer",
+            "description": "Sentiment analysis app for summarizing customer reviews and product feedback patterns.",
+            "tech_stack": "Python, NLP, sentiment analysis",
+            "status": "Built",
+            "tags": ["NLP", "Sentiment", "Analytics"],
+            "tab": "sentiment",
+        },
+        {
+            "key": "financial",
+            "title": "Finance Planning",
+            "description": "AI planning assistant for budgeting, scenario analysis, and financial goal tracking.",
+            "tech_stack": "Python, analytics, LLM workflows",
+            "status": "Built",
+            "tags": ["Finance", "Planning", "Assistant"],
+            "tab": "financial",
+        },
+        {
+            "key": "movie",
+            "title": "Movie Recommendations",
+            "description": "AI-powered movie recommender combining two-tower embeddings, SVD collaborative filtering, and LLM-style preference extraction from TMDB data.",
+            "tech_stack": "Python, scikit-learn, TMDB API, Gradio",
+            "status": "Built",
+            "tags": ["Recommendations", "ML", "NLP"],
+            "tab": "movie",
+        },
     ],
     "capabilities": [
         {"title": "Agents", "description": "Research, routing, planning"},
@@ -58,6 +150,7 @@ def load_config(path: str | Path = CONFIG_PATH) -> dict[str, Any]:
         config["site"]["intro_headline"] = config["site"]["headline"]
     config["server"]["port"] = int(config["server"]["port"])
     config["server"]["host"] = str(config["server"]["host"])
+    _derive_project_tab_links(config)
     return config
 
 
@@ -74,3 +167,20 @@ def _merge(target: dict[str, Any], updates: dict[str, Any]) -> None:
             _merge(target[key], value)
         else:
             target[key] = value
+
+
+def _derive_project_tab_links(config: dict[str, Any]) -> None:
+    """Add title -> tab mappings from YAML project entries.
+
+    This keeps project links stable when visible project titles are edited.
+    Existing explicit project_tab_links remain as fallback mappings.
+    """
+    tab_links = dict(config.get("project_tab_links", {}))
+    for project in config.get("projects", []):
+        if not isinstance(project, dict):
+            continue
+        title = project.get("title")
+        tab = project.get("tab") or project.get("tab_id") or project.get("key")
+        if title and tab:
+            tab_links[str(title)] = str(tab)
+    config["project_tab_links"] = tab_links

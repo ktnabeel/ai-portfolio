@@ -15,8 +15,9 @@ Uses:
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
+from .._llm import create_llm
 from ..models import FearGreedData, RiskSentimentOutput, WorldNewsItem
 from ..scrapers.cnn_fear_greed import fetch_fear_greed
 from ..scrapers.news_scraper import fetch_world_news
@@ -50,8 +51,8 @@ class RiskSentimentAgent:
 
     NAME = "Risk & Sentiment"
 
-    def __init__(self, model_name: str = "gpt-4o"):
-        self.llm = ChatOpenAI(model=model_name, temperature=0.3)
+    def __init__(self, llm: BaseChatModel | None = None):
+        self.llm = llm  # None → deterministic / rule-based fallback
 
     def analyze(self) -> RiskSentimentOutput:
         """Fetch and analyze market sentiment data.
@@ -63,25 +64,41 @@ class RiskSentimentAgent:
         fear_greed = fetch_fear_greed()
         news_items = fetch_world_news(max_items=8)
 
-        # Build context for LLM
-        fg_context = f"""
+        # Deterministic fallback (no LLM → structured rules)
+        deterministic_analysis = (
+            f"MARKET TREND: Based on Fear & Greed at {fear_greed.value}/100 "
+            f"({fear_greed.zone.value}), the market is showing "
+            f"{'positive' if fear_greed.value > 50 else 'negative'} sentiment. "
+            f"{fear_greed.description}\n"
+            f"RISK LEVEL: {'HIGH' if fear_greed.value < 30 or fear_greed.value > 70 else 'MODERATE'}\n"
+            f"KEY FACTORS:\n"
+            f"  - Fear & Greed Index at {fear_greed.value}/100 ({fear_greed.zone.value})\n"
+            f"  - {len(news_items)} news headlines analyzed\n"
+            + "".join(f"  - {n.headline[:100]}...\n" for n in news_items[:3])
+        )
+
+        if self.llm is None:
+            analysis = deterministic_analysis
+        else:
+            # Build context for LLM
+            fg_context = f"""
 CNN Fear & Greed Index: {fear_greed.value}/100
 Zone: {fear_greed.zone.value}
 Description: {fear_greed.description}
 """
 
-        if fear_greed.previous_close:
-            fg_context += f"Previous Close: {fear_greed.previous_close}\n"
-        if fear_greed.one_week_ago:
-            fg_context += f"1 Week Ago: {fear_greed.one_week_ago}\n"
-        if fear_greed.one_month_ago:
-            fg_context += f"1 Month Ago: {fear_greed.one_month_ago}\n"
+            if fear_greed.previous_close:
+                fg_context += f"Previous Close: {fear_greed.previous_close}\n"
+            if fear_greed.one_week_ago:
+                fg_context += f"1 Week Ago: {fear_greed.one_week_ago}\n"
+            if fear_greed.one_month_ago:
+                fg_context += f"1 Month Ago: {fear_greed.one_month_ago}\n"
 
-        news_context = "World News Headlines:\n"
-        for i, news in enumerate(news_items, 1):
-            news_context += f"  {i}. [{news.impact}] {news.headline} (source: {news.source})\n"
+            news_context = "World News Headlines:\n"
+            for i, news in enumerate(news_items, 1):
+                news_context += f"  {i}. [{news.impact}] {news.headline} (source: {news.source})\n"
 
-        prompt = f"""
+            prompt = f"""
 Analyze the current market environment based on this data:
 
 {fg_context}
@@ -93,26 +110,15 @@ Provide:
 2. RISK LEVEL: LOW, MODERATE, or HIGH for options trading.
 3. KEY FACTORS: 3-5 bullet points on what's driving the current sentiment.
 """
-
-        try:
-            messages = [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=prompt),
-            ]
-            response = self.llm.invoke(messages)
-            analysis = str(response.content) if hasattr(response, 'content') else str(response)
-        except Exception as e:
-            analysis = (
-                f"MARKET TREND: Based on Fear & Greed at {fear_greed.value}/100 "
-                f"({fear_greed.zone.value}), the market is showing "
-                f"{'positive' if fear_greed.value > 50 else 'negative'} sentiment. "
-                f"{fear_greed.description}\n"
-                f"RISK LEVEL: {'HIGH' if fear_greed.value < 30 or fear_greed.value > 70 else 'MODERATE'}\n"
-                f"KEY FACTORS:\n"
-                f"  - Fear & Greed Index at {fear_greed.value}/100 ({fear_greed.zone.value})\n"
-                f"  - {len(news_items)} news headlines analyzed\n"
-                + "".join(f"  - {n.headline[:100]}...\n" for n in news_items[:3])
-            )
+            try:
+                messages = [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=prompt),
+                ]
+                response = self.llm.invoke(messages)
+                analysis = str(response.content) if hasattr(response, 'content') else str(response)
+            except Exception:
+                analysis = deterministic_analysis
 
         # Parse the analysis into sections
         market_trend = ""

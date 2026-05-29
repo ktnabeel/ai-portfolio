@@ -14,6 +14,8 @@ Uses:
 
 from __future__ import annotations
 
+from typing import Any
+
 from ..mcp.trading_server import MCPTradingServer
 from ..models import (
     ExecutionResult,
@@ -31,6 +33,11 @@ class ExecutionAgent:
 
     def __init__(self):
         self.mcp = MCPTradingServer()
+
+    @property
+    def last_mcp_calls(self) -> list[dict[str, Any]]:
+        """Return MCP call log entries since the last access."""
+        return self.mcp.last_calls
 
     def execute(self, decision: StrategyDecision, symbol: str) -> ExecutionResult:
         """Execute the strategy decision via MCP paper trading.

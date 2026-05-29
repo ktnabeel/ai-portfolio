@@ -10,75 +10,82 @@ from .models import ProductSentiment
 
 SENTIMENT_CSS = """
 #sentiment-tab {
-    background: var(--theme-bg, #0d1117);
-    color: var(--theme-ink, #c9d1d9);
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid var(--theme-line, #d9e2ec);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+    color: var(--theme-ink, rgba(255,255,255,.92));
     font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 20px;
 }
 #sentiment-tab h1, #sentiment-tab h2, #sentiment-tab h3 {
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
 }
 /* Loading spinner */
 .sent-loading {
     text-align: center;
     padding: 60px 20px;
-    color: var(--theme-muted, #8b949e);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     font-size: 1.05em;
 }
 .sent-spinner {
     width: 48px;
     height: 48px;
     margin: 0 auto 18px;
-    border: 4px solid var(--theme-line, #30363d);
-    border-top-color: var(--theme-blue, #58a6ff);
+    border: 4px solid var(--theme-line, rgba(255,255,255,.14));
+    border-top-color: var(--theme-blue, #1ca0f1);
     border-radius: 50%;
     animation: sent-spin 0.7s linear infinite;
 }
 @keyframes sent-spin {
     to { transform: rotate(360deg); }
 }
-.sent-pos { color: #3fb950; font-weight: bold; }
-.sent-neg { color: #f85149; font-weight: bold; }
-.sent-neu { color: #b0b8c1; font-weight: bold; }
+.sent-pos { color: var(--theme-green, #37c78a); font-weight: bold; }
+.sent-neg { color: var(--theme-red, #ff7369); font-weight: bold; }
+.sent-neu { color: var(--theme-muted, rgba(255,255,255,.68)); font-weight: bold; }
 .sent-card {
-    background: var(--theme-panel, #161b22);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 10px;
+    background: var(--theme-panel, #373c3f);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
     padding: 18px;
     margin: 10px 0;
+    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
 .sent-verdict {
-    background: linear-gradient(135deg, var(--theme-panel, #161b22), #1a2332);
-    border: 1px solid var(--theme-line, #30363d);
-    border-left: 4px solid var(--theme-blue, #58a6ff);
-    border-radius: 10px;
+    background: linear-gradient(135deg, var(--theme-panel, #373c3f), var(--theme-surface, #454b4e));
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-left: 4px solid var(--theme-blue, #1ca0f1);
+    border-radius: 16px;
     padding: 18px 22px;
     margin: 14px 0;
     font-size: 0.96em;
     line-height: 1.7;
 }
 .sent-verdict em {
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
     font-style: normal;
     font-weight: 600;
 }
 .sent-bar-wrap {
     height: 10px;
     border-radius: 5px;
-    background: var(--theme-line, #30363d);
+    background: var(--theme-line, rgba(255,255,255,.14));
     margin: 8px 0 12px;
     overflow: hidden;
     display: flex;
 }
-.sent-bar-pos { background: #3fb950; height: 100%; }
-.sent-bar-neu { background: #6e7681; height: 100%; }
-.sent-bar-neg { background: #f85149; height: 100%; }
+.sent-bar-pos { background: var(--theme-green, #37c78a); height: 100%; }
+.sent-bar-neu { background: var(--theme-muted, rgba(255,255,255,.68)); height: 100%; }
+.sent-bar-neg { background: var(--theme-red, #ff7369); height: 100%; }
 .review-row {
-    border-top: 1px solid var(--theme-line, #30363d);
+    border-top: 1px solid var(--theme-line, rgba(255,255,255,.14));
     padding: 12px 0;
 }
 .review-row:first-child { border-top: none; }
 .review-text {
-    color: var(--theme-muted, #8b949e);
+    color: var(--theme-muted, rgba(255,255,255,.68));
     font-size: 0.92em;
     line-height: 1.5;
 }
@@ -91,24 +98,25 @@ SENTIMENT_CSS = """
 .sent-col {
     flex: 1;
     min-width: 0;
-    background: var(--theme-panel, #161b22);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 10px;
+    background: var(--theme-panel, #373c3f);
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 14px;
     padding: 18px;
+    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
-.sent-col-a { border-left: 4px solid var(--theme-blue, #58a6ff); }
-.sent-col-b { border-left: 4px solid #d2991d; }
+.sent-col-a { border-left: 4px solid var(--theme-blue, #1ca0f1); }
+.sent-col-b { border-left: 4px solid var(--theme-amber, #dfab01); }
 .sent-col-title {
     font-size: 1.15em;
     font-weight: 700;
-    color: var(--theme-blue, #58a6ff);
+    color: var(--theme-blue, #1ca0f1);
     margin-bottom: 4px;
 }
-.sent-col-b .sent-col-title { color: #d2991d; }
+.sent-col-b .sent-col-title { color: var(--theme-amber, #dfab01); }
 .sent-compare-summary {
-    background: linear-gradient(135deg, #1a2332, #1c1f2a);
-    border: 1px solid var(--theme-line, #30363d);
-    border-radius: 10px;
+    background: linear-gradient(135deg, var(--theme-panel, #373c3f), var(--theme-surface, #454b4e));
+    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    border-radius: 16px;
     padding: 16px 20px;
     margin-bottom: 16px;
     text-align: center;
@@ -121,8 +129,8 @@ SENTIMENT_CSS = """
     font-size: 0.9em;
     margin-left: 6px;
 }
-.sent-winner-a { background: rgba(88,166,255,0.2); color: #58a6ff; }
-.sent-winner-b { background: rgba(210,153,29,0.2); color: #d2991d; }
+.sent-winner-a { background: rgba(28,160,241,0.2); color: var(--theme-blue, #1ca0f1); }
+.sent-winner-b { background: rgba(223,171,1,0.2); color: var(--theme-amber, #dfab01); }
 .sent-stat-row {
     display: flex;
     justify-content: center;
@@ -132,7 +140,7 @@ SENTIMENT_CSS = """
 }
 .sent-stat-item { text-align: center; }
 .sent-stat-val { font-size: 1.3em; font-weight: 700; }
-.sent-stat-label { color: var(--theme-muted, #8b949e); font-size: 0.85em; }
+.sent-stat-label { color: var(--theme-muted, rgba(255,255,255,.68)); font-size: 0.85em; }
 """
 
 # Global cache
@@ -254,13 +262,13 @@ def _analyze_product(selection: str) -> str:
         return ""
     ps = _get_or_analyze(selection)
     if ps is None:
-        return "<p style='color:#f85149'>Business not found.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Business not found.</p>"
 
     card = _render_product_card(ps, max_reviews=10)
     return f"""
     <div id='sentiment-tab' style='padding:20px'>
         <h2>📊 {ps.product_title}</h2>
-        <h4 style='color:var(--theme-muted,#8b949e);margin-top:-8px'>
+        <h4 style='color:var(--theme-muted,rgba(255,255,255,.68));margin-top:-8px'>
             {_domain_map.get(ps.product_id, "")}
         </h4>
         {card}
@@ -271,15 +279,15 @@ def _analyze_product(selection: str) -> str:
 def _compare_products(sel_a: str, sel_b: str) -> str:
     """Render side-by-side comparison of two businesses."""
     if not sel_a or not sel_b:
-        return "<p style='color:#f85149'>Please select two businesses to compare.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please select two businesses to compare.</p>"
     if sel_a == sel_b:
-        return "<p style='color:#f85149'>Please select two different businesses to compare.</p>"
+        return "<p style='color:var(--theme-red,#ff7369)'>Please select two different businesses to compare.</p>"
 
     ps_a = _get_or_analyze(sel_a)
     ps_b = _get_or_analyze(sel_b)
     if ps_a is None or ps_b is None:
         missing = sel_a if ps_a is None else sel_b
-        return f"<p style='color:#f85149'>Business not found: {missing}</p>"
+        return f"<p style='color:var(--theme-red,#ff7369)'>Business not found: {missing}</p>"
 
     score_a = _score(ps_a)
     score_b = _score(ps_b)
@@ -298,7 +306,7 @@ def _compare_products(sel_a: str, sel_b: str) -> str:
         <strong style='font-size:1.1em'>⚖️ Comparison Summary</strong>
         {winner_html}
         <div class='sent-stat-row'>
-            <div class='sent-stat-item' style='color:#58a6ff'>
+            <div class='sent-stat-item' style='color:var(--theme-blue,#1ca0f1)'>
                 <div class='sent-stat-val'>{ps_a.avg_rating:.1f}⭐</div>
                 <div class='sent-stat-label'>{ps_a.product_title[:20]}</div>
             </div>
@@ -306,18 +314,18 @@ def _compare_products(sel_a: str, sel_b: str) -> str:
                 <div class='sent-stat-val' style='color:var(--theme-muted)'>vs</div>
                 <div class='sent-stat-label'>&nbsp;</div>
             </div>
-            <div class='sent-stat-item' style='color:#d2991d'>
+            <div class='sent-stat-item' style='color:var(--theme-amber,#dfab01)'>
                 <div class='sent-stat-val'>{ps_b.avg_rating:.1f}⭐</div>
                 <div class='sent-stat-label'>{ps_b.product_title[:20]}</div>
             </div>
         </div>
         <div class='sent-stat-row'>
             <div class='sent-stat-item'>
-                <div class='sent-stat-val' style='color:#3fb950'>{ps_a.positive_pct:.0%}</div>
+                <div class='sent-stat-val' style='color:var(--theme-green,#37c78a)'>{ps_a.positive_pct:.0%}</div>
                 <div class='sent-stat-label'>Positive</div>
             </div>
             <div class='sent-stat-item'>
-                <div class='sent-stat-val' style='color:#f85149'>{ps_a.negative_pct:.0%}</div>
+                <div class='sent-stat-val' style='color:var(--theme-red,#ff7369)'>{ps_a.negative_pct:.0%}</div>
                 <div class='sent-stat-label'>Negative</div>
             </div>
             <div class='sent-stat-item' style='opacity:0.5'>
@@ -325,11 +333,11 @@ def _compare_products(sel_a: str, sel_b: str) -> str:
                 <div class='sent-stat-label'>Reviews</div>
             </div>
             <div class='sent-stat-item'>
-                <div class='sent-stat-val' style='color:#3fb950'>{ps_b.positive_pct:.0%}</div>
+                <div class='sent-stat-val' style='color:var(--theme-green,#37c78a)'>{ps_b.positive_pct:.0%}</div>
                 <div class='sent-stat-label'>Positive</div>
             </div>
             <div class='sent-stat-item'>
-                <div class='sent-stat-val' style='color:#f85149'>{ps_b.negative_pct:.0%}</div>
+                <div class='sent-stat-val' style='color:var(--theme-red,#ff7369)'>{ps_b.negative_pct:.0%}</div>
                 <div class='sent-stat-label'>Negative</div>
             </div>
             <div class='sent-stat-item' style='opacity:0.5'>

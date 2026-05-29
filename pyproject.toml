@@ -21,6 +21,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.30.0",
     "pydantic>=2.0.0",
+    "langchain-anthropic>=1.4.4",
 ]
 
 [dependency-groups]

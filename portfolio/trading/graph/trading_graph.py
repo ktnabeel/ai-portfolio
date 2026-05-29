@@ -24,10 +24,12 @@ Nodes handle errors internally so the workflow always completes.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from langgraph.graph import END, StateGraph
 
+from .._llm import create_llm
 from ..agents.security_agent import SecurityAgent
 from ..agents.risk_sentiment_agent import RiskSentimentAgent
 from ..agents.regime_agent import RegimeAgent
@@ -39,13 +41,57 @@ from .state import TradingState
 
 
 # ════════════════════════════════════════════════════════════════════════
+# Helpers
+# ════════════════════════════════════════════════════════════════════════
+
+def _make_llm(state: TradingState) -> "BaseChatModel | None":
+    """Build a ChatModel from the user's provider/model/key choices.
+
+    Returns a ``BaseChatModel`` configured per the state, or ``None``
+    if no API key is available — agents fall back to deterministic,
+    rule-based reasoning when ``llm`` is ``None``.
+    """
+    provider = state.get("llm_provider", "") or "openai"
+    model = state.get("llm_model", "") or None
+    api_key = state.get("openai_api_key", "") or None
+
+    if provider not in ("openai", "anthropic"):
+        return None
+
+    # Resolve API key: user-provided → env var → None (deterministic)
+    effective_key = api_key.strip() if api_key else ""
+    if not effective_key:
+        env_var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+        effective_key = os.environ.get(env_var, "")
+
+    if not effective_key:
+        return None  # No key available → deterministic mode
+
+    try:
+        return create_llm(provider=provider, model=model, api_key=effective_key)  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
+def _is_deterministic_mode(state: TradingState) -> bool:
+    """Check whether the workflow is running in deterministic (no-LLM) mode."""
+    provider = state.get("llm_provider", "") or "openai"
+    api_key = (state.get("openai_api_key", "") or "").strip()
+    if api_key:
+        return False
+    env_var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+    return not os.environ.get(env_var, "")
+
+
+# ════════════════════════════════════════════════════════════════════════
 # Node Functions — each is a LangGraph node with error isolation
 # ════════════════════════════════════════════════════════════════════════
 
 def _node_security(state: TradingState) -> dict[str, Any]:
     """Agent 1: Security identification & validation."""
     try:
-        agent = SecurityAgent()
+        llm = _make_llm(state)
+        agent = SecurityAgent(llm=llm)
         security = agent.analyze(state["symbol"])
         return {
             "security": security,
@@ -63,7 +109,8 @@ def _node_security(state: TradingState) -> dict[str, Any]:
 def _node_sentiment(state: TradingState) -> dict[str, Any]:
     """Agent 2: Risk & sentiment analysis."""
     try:
-        agent = RiskSentimentAgent()
+        llm = _make_llm(state)
+        agent = RiskSentimentAgent(llm=llm)
         sentiment = agent.analyze()
         fg = sentiment.fear_greed
         return {
@@ -85,7 +132,8 @@ def _node_sentiment(state: TradingState) -> dict[str, Any]:
 def _node_regime(state: TradingState) -> dict[str, Any]:
     """Agent 3: Market regime detection."""
     try:
-        agent = RegimeAgent()
+        llm = _make_llm(state)
+        agent = RegimeAgent(llm=llm)
         sentiment = state.get("sentiment")
         regime = agent.analyze(sentiment=sentiment)
         return {
@@ -128,7 +176,8 @@ def _node_fetch_chain(state: TradingState) -> dict[str, Any]:
 def _node_decision(state: TradingState) -> dict[str, Any]:
     """Agent 4: Strategy decision."""
     try:
-        agent = DecisionAgent()
+        llm = _make_llm(state)
+        agent = DecisionAgent(llm=llm)
         security = state.get("security")
         sentiment = state.get("sentiment")
         regime = state.get("regime")
@@ -166,6 +215,17 @@ def _node_decision(state: TradingState) -> dict[str, Any]:
             "error": f"Decision agent failed: {e}",
             "log": [f"[Decision] ERROR: {e}"],
         }
+
+
+def _route_after_decision(state: TradingState) -> str:
+    """Conditional edge: only proceed to execution if the user approved.
+
+    When ``user_approved`` is False, the graph ends after the Decision
+    Agent so the user can review the analysis before committing to a trade.
+    """
+    if state.get("user_approved"):
+        return "execution"
+    return "end"
 
 
 def _node_execution(state: TradingState) -> dict[str, Any]:
@@ -222,32 +282,58 @@ def build_trading_graph() -> StateGraph:
     graph = StateGraph(TradingState)
 
     # Add nodes
-    graph.add_node("security", _node_security)
-    graph.add_node("sentiment", _node_sentiment)
-    graph.add_node("regime", _node_regime)
+    graph.add_node("security_agent", _node_security)
+    graph.add_node("sentiment_agent", _node_sentiment)
+    graph.add_node("regime_agent", _node_regime)
     graph.add_node("fetch_chain", _node_fetch_chain)
-    graph.add_node("decision", _node_decision)
-    graph.add_node("execution", _node_execution)
+    graph.add_node("decision_agent", _node_decision)
+    graph.add_node("execution_agent", _node_execution)
 
     # Set entry point
-    graph.set_entry_point("security")
+    graph.set_entry_point("security_agent")
 
-    # Linear pipeline — each node always proceeds to the next
-    graph.add_edge("security", "sentiment")
-    graph.add_edge("sentiment", "regime")
-    graph.add_edge("regime", "fetch_chain")
-    graph.add_edge("fetch_chain", "decision")
-    graph.add_edge("decision", "execution")
-    graph.add_edge("execution", END)
+    # Linear pipeline for analysis (runs every time)
+    graph.add_edge("security_agent", "sentiment_agent")
+    graph.add_edge("sentiment_agent", "regime_agent")
+    graph.add_edge("regime_agent", "fetch_chain")
+    graph.add_edge("fetch_chain", "decision_agent")
+
+    # Human-in-the-loop: conditional edge — only execute if user approved
+    graph.add_conditional_edges(
+        "decision_agent",
+        _route_after_decision,
+        {
+            "execution": "execution_agent",
+            "end": END,
+        },
+    )
+    graph.add_edge("execution_agent", END)
 
     return graph.compile()
 
 
-def run_trading_workflow(symbol: str) -> dict:
-    """Run the full multi-agent trading workflow for a symbol.
+def run_trading_workflow(
+    symbol: str,
+    llm_provider: str = "openai",
+    llm_model: str = "",
+    openai_api_key: str = "",
+    user_approved: bool = False,
+    user_rejection_reason: str = "",
+) -> dict:
+    """Run the multi-agent trading workflow for a symbol.
+
+    The workflow always runs the analysis pipeline (Security → Sentiment
+    → Regime → Options Chain → Decision).  Execution only proceeds when
+    *user_approved* is ``True`` — this provides human-in-the-loop review.
 
     Args:
         symbol: Stock ticker symbol (e.g., 'AAPL').
+        llm_provider: ``"openai"`` or ``"anthropic"``.
+        llm_model: Model name (e.g. ``"gpt-4o"``, ``"claude-sonnet-4-20250514"``).
+        openai_api_key: User-provided API key (empty → env var fallback).
+        user_approved: Whether the user has approved the trade.
+            Defaults to ``False`` so the first run stops before execution.
+        user_rejection_reason: Human-readable reason if the user rejected.
 
     Returns:
         The final TradingState dict with all agent outputs.
@@ -256,6 +342,11 @@ def run_trading_workflow(symbol: str) -> dict:
 
     initial_state: TradingState = {
         "symbol": symbol.strip().upper(),
+        "llm_provider": llm_provider,
+        "llm_model": llm_model,
+        "openai_api_key": openai_api_key,
+        "user_approved": user_approved,
+        "user_rejection_reason": user_rejection_reason,
         "security": None,
         "sentiment": None,
         "regime": None,
@@ -265,7 +356,10 @@ def run_trading_workflow(symbol: str) -> dict:
         "error": "",
         "stage": "initializing",
         "messages": [],
-        "log": [f"Starting multi-agent workflow for {symbol}..."],
+        "log": [
+            f"Starting multi-agent workflow for {symbol}..."
+            f"{' [HITL: approved]' if user_approved else ' [HITL: pending review]'}"
+        ],
     }
 
     result = graph.invoke(initial_state)

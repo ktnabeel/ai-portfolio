@@ -18,8 +18,9 @@ from __future__ import annotations
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models import BaseChatModel
 
+from .._llm import create_llm
 import yfinance as yf
 
 from ..models import SecurityInfo
@@ -50,8 +51,8 @@ class SecurityAgent:
 
     NAME = "Security Agent"
 
-    def __init__(self, model_name: str = "gpt-4o"):
-        self.llm = ChatOpenAI(model=model_name, temperature=0.2)
+    def __init__(self, llm: BaseChatModel | None = None):
+        self.llm = llm  # None → deterministic / rule-based fallback
 
     def analyze(self, symbol: str) -> SecurityInfo:
         """Analyze and validate a security symbol.
@@ -107,8 +108,20 @@ class SecurityAgent:
         if current_price and current_price < 5:
             is_optionable = False
 
-        # Use LLM for reasoning
-        company_context = f"""
+        # Deterministic fallback (no LLM → use structured data directly)
+        deterministic_reasoning = (
+            f"Validated {symbol} ({company_name}) — {sector}/{industry}. "
+            f"Market cap: ${market_cap:,.0f}. "
+            f"Options available: {'Yes' if is_optionable else 'No'}."
+            if market_cap else
+            f"Validated {symbol} ({company_name}) — {sector}/{industry}. "
+            f"Options available: {'Yes' if is_optionable else 'No'}."
+        )
+
+        if self.llm is None:
+            reasoning = deterministic_reasoning
+        else:
+            company_context = f"""
 Symbol: {symbol}
 Company: {company_name}
 Sector: {sector}
@@ -118,25 +131,17 @@ Current Price: ${current_price:.2f}" if current_price else "N/A"
 Exchange: {exchange}
 Options Available: {'Yes' if is_optionable else 'No'}
 """
-
-        try:
-            messages = [
-                SystemMessage(content=SYSTEM_PROMPT),
-                HumanMessage(content=(
-                    f"Analyze this security and provide your identification assessment:\n\n{company_context}"
-                )),
-            ]
-            response = self.llm.invoke(messages)
-            reasoning = str(response.content) if hasattr(response, 'content') else str(response)
-        except Exception:
-            reasoning = (
-                f"Validated {symbol} ({company_name}) — {sector}/{industry}. "
-                f"Market cap: ${market_cap:,.0f}. "
-                f"Options available: {'Yes' if is_optionable else 'No'}."
-                if market_cap else
-                f"Validated {symbol} ({company_name}) — {sector}/{industry}. "
-                f"Options available: {'Yes' if is_optionable else 'No'}."
-            )
+            try:
+                messages = [
+                    SystemMessage(content=SYSTEM_PROMPT),
+                    HumanMessage(content=(
+                        f"Analyze this security and provide your identification assessment:\n\n{company_context}"
+                    )),
+                ]
+                response = self.llm.invoke(messages)
+                reasoning = str(response.content) if hasattr(response, 'content') else str(response)
+            except Exception:
+                reasoning = deterministic_reasoning
 
         return SecurityInfo(
             symbol=symbol,
