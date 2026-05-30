@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from portfolio.trading.deploy import LEAN_CSS, TRADING_CSS, build_gradio_app, create_fastapi_app, runtime_mode
+from portfolio.trading.deploy import LEAN_CSS, build_gradio_app, create_fastapi_app, runtime_mode
 
 
 demo = build_gradio_app()
@@ -24,7 +24,7 @@ def main() -> None:
     demo.launch(
         server_name=os.getenv("HOST", "0.0.0.0"),
         server_port=int(os.getenv("PORT", "7860")),
-        css=LEAN_CSS + TRADING_CSS,
+        css=LEAN_CSS,
         show_api=False,
         show_error=True,
     )

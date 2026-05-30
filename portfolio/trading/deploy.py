@@ -7,13 +7,11 @@ from datetime import datetime, timezone
 from html import escape
 from typing import Any
 
-import gradio as gr
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from .mcp.broker import close_position, get_account, reset_account
 from .mcp.trading_server import MCPTradingServer
-from .ui import TRADING_CSS, render_trading_tab
 
 
 APP_TITLE = "Lean Trading Agent Deployment"
@@ -434,7 +432,59 @@ def _blank_to_none(value: str | None) -> float | None:
     return float(text)
 
 
-def build_gradio_app() -> gr.Blocks:
+def build_gradio_app():
+    import gradio as gr
+
+    def _refresh_account() -> tuple[str, str]:
+        return render_account_summary_html(), ""
+
+    def _place_order(
+        symbol: str,
+        strategy: str,
+        option_type: str,
+        strike: str,
+        expiration: str,
+        quantity: int,
+        limit_price: str,
+    ) -> tuple[str, str]:
+        result = place_order_via_mcp(
+            symbol.strip().upper(),
+            strategy,
+            option_type.strip().lower(),
+            _blank_to_none(strike),
+            expiration.strip(),
+            quantity,
+            _blank_to_none(limit_price),
+        )
+        if not result.get("success", True):
+            return (
+                render_account_summary_html(),
+                f"<div style='color:#ff8e80;'>Order failed: {escape(str(result.get('error', 'Unknown error')))}</div>",
+            )
+        return (
+            render_account_summary_html(),
+            f"<div style='color:#7ff0ba;'>Order submitted: {escape(str(result.get('status', 'OK')))}</div>",
+        )
+
+    def _reset() -> tuple[str, str]:
+        reset_via_mcp()
+        return render_account_summary_html(), "<div style='color:#7ff0ba;'>Account reset.</div>"
+
+    def _close(position_id: str, exit_price: str) -> tuple[str, str]:
+        pid = position_id.strip()
+        if not pid:
+            return render_account_summary_html(), "<div style='color:#ff8e80;'>Position ID is required.</div>"
+        result = close_via_mcp(pid, _blank_to_none(exit_price))
+        if not result.get("success", True):
+            return (
+                render_account_summary_html(),
+                f"<div style='color:#ff8e80;'>Close failed: {escape(str(result.get('error', 'Unknown error')))}</div>",
+            )
+        return (
+            render_account_summary_html(),
+            f"<div style='color:#7ff0ba;'>Position closed: {escape(str(result.get('trade_id', 'OK')))}</div>",
+        )
+
     with gr.Blocks(title=APP_TITLE) as demo:
         with gr.Column(elem_id="deploy-root", elem_classes=["deploy-shell"]):
             gr.HTML(
@@ -444,14 +494,59 @@ def build_gradio_app() -> gr.Blocks:
                     <div class="deploy-pill">Lean deployment</div>
                     <h1>Trading Agent deployment surface</h1>
                     <p>
-                      Single-entry deployment for Hugging Face Spaces. It keeps the Trading Desk intact and avoids booting the portfolio tabs.
+                      A single trading-focused app backed by the same simulated broker, with account status, order placement,
+                      order history, close, and reset flows.
                     </p>
                   </div>
                   <div class="deploy-pill">{runtime_mode()}</div>
                 </section>
                 """
             )
-            render_trading_tab()
+
+            with gr.Row():
+                with gr.Column(scale=1, min_width=340):
+                    gr.Markdown("### Trade")
+                    symbol = gr.Textbox(label="Symbol", value="AAPL")
+                    strategy = gr.Dropdown(["Call", "Put", "Strangle", "No Trade"], value="Call", label="Strategy")
+                    option_type = gr.Dropdown(["call", "put"], value="call", label="Option Type")
+                    strike = gr.Textbox(label="Strike", value="150")
+                    expiration = gr.Textbox(label="Expiration", placeholder="YYYY-MM-DD")
+                    quantity = gr.Number(label="Quantity", value=1, precision=0)
+                    limit_price = gr.Textbox(label="Limit Price", placeholder="Optional")
+                    place_btn = gr.Button("Place Order", variant="primary")
+
+                    gr.Markdown("### Position")
+                    position_id = gr.Textbox(label="Position ID", placeholder="POS-...")
+                    exit_price = gr.Textbox(label="Exit Price", placeholder="Optional")
+                    close_btn = gr.Button("Close Position")
+
+                    reset_btn = gr.Button("Reset Account")
+                    action_status = gr.HTML("")
+
+                with gr.Column(scale=2, min_width=500):
+                    account_output = gr.HTML(render_account_summary_html())
+                    refresh_btn = gr.Button("Refresh Account")
+
+            place_btn.click(
+                fn=_place_order,
+                inputs=[symbol, strategy, option_type, strike, expiration, quantity, limit_price],
+                outputs=[account_output, action_status],
+            )
+            close_btn.click(
+                fn=_close,
+                inputs=[position_id, exit_price],
+                outputs=[account_output, action_status],
+            )
+            reset_btn.click(
+                fn=_reset,
+                inputs=[],
+                outputs=[account_output, action_status],
+            )
+            refresh_btn.click(
+                fn=_refresh_account,
+                inputs=[],
+                outputs=[account_output, action_status],
+            )
     return demo
 
 
