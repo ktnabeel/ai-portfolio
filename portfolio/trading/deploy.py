@@ -88,6 +88,146 @@ footer { display: none !important; }
   margin-top: 0;
   color: #101828;
 }
+.pipeline-shell {
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(16,24,40,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,250,252,.96));
+  box-shadow: 0 18px 44px rgba(16,24,40,.06);
+}
+.pipeline-head {
+  margin-bottom: 14px;
+}
+.pipeline-head .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.pipeline-title {
+  margin-top: 10px;
+  font-size: clamp(20px, 2.4vw, 28px);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-weight: 900;
+  color: #101828;
+}
+.pipeline-copy {
+  margin-top: 8px;
+  color: #667085;
+  line-height: 1.5;
+}
+.pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.pipeline-card {
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid rgba(16,24,40,.10);
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(16,24,40,.05);
+  display: grid;
+  gap: 8px;
+  min-height: 160px;
+}
+.pipeline-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
+}
+.pipeline-icon[data-accent="teal"] { background: rgba(15,118,110,.08); color: #0f766e; }
+.pipeline-icon[data-accent="amber"] { background: rgba(180,83,9,.08); color: #b45309; }
+.pipeline-icon[data-accent="violet"] { background: rgba(124,58,237,.08); color: #7c3aed; }
+.pipeline-icon[data-accent="green"] { background: rgba(5,150,105,.08); color: #059669; }
+.pipeline-icon[data-accent="slate"] { background: rgba(51,65,85,.08); color: #334155; }
+.pipeline-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #101828;
+  line-height: 1.1;
+}
+.pipeline-summary {
+  font-size: 13px;
+  font-weight: 700;
+  color: #101828;
+  line-height: 1.4;
+}
+.pipeline-detail {
+  font-size: 13px;
+  color: #667085;
+  line-height: 1.5;
+}
+.pipeline-status {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #667085;
+}
+.pipeline-legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(16,24,40,.08);
+  color: #667085;
+  font-size: 12px;
+}
+.pipeline-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  display: inline-block;
+}
+.legend-dot.complete { background: #0f766e; }
+.legend-dot.running { background: #2563eb; }
+.legend-dot.review { background: #b45309; }
+.legend-dot.pending { background: #94a3b8; }
+.trace-expander {
+  border-radius: 14px;
+  border: 1px solid rgba(16,24,40,.08);
+  padding: 12px 12px 10px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+  box-shadow: 0 10px 24px rgba(16,24,40,.04);
+}
+.trace-expander summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 900;
+  color: #101828;
+}
+.trace-expander summary::-webkit-details-marker {
+  display: none;
+}
+.trace-expander .trace-copy {
+  margin-top: 8px;
+  color: #667085;
+  line-height: 1.5;
+  font-size: 13px;
+}
 .agent-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -241,15 +381,85 @@ def _money(value: float) -> str:
 
 def render_agent_overview_html() -> str:
     return """
-    <div class="deploy-panel">
-      <h2>Workflow</h2>
-      <div class="agent-grid">
-        <div class="workflow-card"><div class="topline"><div class="bubble">1</div><span class="label">Profile</span></div><div class="value">Identity and validation.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">2</div><span class="label">Signal</span></div><div class="value">News and market mood.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">3</div><span class="label">Context</span></div><div class="value">Bull, bear, or neutral.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">4</div><span class="label">Plan</span></div><div class="value">Select the next step.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">5</div><span class="label">Tool Use</span></div><div class="value">Simulated action routing.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">6</div><span class="label">Summary</span></div><div class="value">Summarize the result.</div></div>
+    <div class="pipeline-shell">
+      <div class="pipeline-head">
+        <div class="eyebrow">Agent Pipeline Flow</div>
+        <div class="pipeline-title">LangGraph orchestration with visible decision traces</div>
+        <div class="pipeline-copy">The interface prioritizes agent reasoning, deep dives, and human review. Execution stays present, but it is visually secondary to the decision chain.</div>
+      </div>
+      <div class="pipeline-grid">
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="blue">🔎</div>
+          <div class="pipeline-name">Security Agent</div>
+          <div class="pipeline-summary">Validate and sanitize the target.</div>
+          <div class="pipeline-detail">Checks input hygiene, policy guardrails, and target readiness before the rest of the workflow proceeds.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">Rejects malformed symbols early and keeps the review surface clean.</div>
+          </details>
+          <div class="pipeline-status">Complete</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="teal">🧭</div>
+          <div class="pipeline-name">Risk &amp; Sentiment</div>
+          <div class="pipeline-summary">Blend signal tone, noise, and news.</div>
+          <div class="pipeline-detail">Combines lightweight sentiment and recent context to form a usable directional read.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">The agent compresses multiple context clues into one concise score.</div>
+          </details>
+          <div class="pipeline-status">Complete</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="amber">🔁</div>
+          <div class="pipeline-name">Regime Detection</div>
+          <div class="pipeline-summary">Classify the market context.</div>
+          <div class="pipeline-detail">Filters the setup through a bull, bear, or neutral gate so the recommendation stays grounded.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">This is where the workflow decides whether the environment supports a trade at all.</div>
+          </details>
+          <div class="pipeline-status">Complete</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="violet">📊</div>
+          <div class="pipeline-name">Options Chain</div>
+          <div class="pipeline-summary">Surface the nearby contract map.</div>
+          <div class="pipeline-detail">Puts the actionable range in view before any decision is drafted or approved.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">Useful for seeing where the workflow would route if the target passes review.</div>
+          </details>
+          <div class="pipeline-status">Complete</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="green">🎯</div>
+          <div class="pipeline-name">Decision Agent</div>
+          <div class="pipeline-summary">Choose buy or sell and explain why.</div>
+          <div class="pipeline-detail">Produces the recommendation that human review can approve, reject, or route onward.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">This is the step users inspect before they ever reach execution.</div>
+          </details>
+          <div class="pipeline-status">Running</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="slate">💸</div>
+          <div class="pipeline-name">Execution Agent</div>
+          <div class="pipeline-summary">Route the simulated paper trade.</div>
+          <div class="pipeline-detail">Keeps the broker action visible but secondary to the reasoning and approval flow.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">The final route only happens after human approval is captured.</div>
+          </details>
+          <div class="pipeline-status">Pending</div>
+        </article>
+      </div>
+      <div class="pipeline-legend">
+        <span><i class="legend-dot complete"></i>Complete</span>
+        <span><i class="legend-dot running"></i>Running</span>
+        <span><i class="legend-dot review"></i>Awaiting approval</span>
+        <span><i class="legend-dot pending"></i>Pending</span>
       </div>
     </div>
     """
@@ -414,8 +624,8 @@ def render_home_html() -> str:
     <section class="deploy-hero">
       <div>
         <div class="deploy-pill">AI Engineer</div>
-        <h1>Multi-agent AI systems</h1>
-        <p>Workflow routing, simulated execution.</p>
+        <h1>Agent decisions first. Execution second.</h1>
+        <p>A clean workflow showing how the agents reason, how each trace expands, and how human review gates any simulated broker action.</p>
       </div>
       <div class="deploy-pill">{runtime_mode()}</div>
     </section>
@@ -424,7 +634,8 @@ def render_home_html() -> str:
       <section class="deploy-panel">
         <h2>Workflow</h2>
         {render_agent_overview_html()}
-        <h3>Run Console</h3>
+        <h3>Human Review</h3>
+        <p style="margin-top:-6px; color:#667085; line-height:1.5;">Use the controls below only after you inspect the agent trace rail. The execution controls remain small on purpose.</p>
         <form class="deploy-form" method="post" action="/api/place-order">
           <input name="symbol" placeholder="Target, e.g. AAPL" value="AAPL" />
           <select name="strategy">
@@ -576,8 +787,8 @@ def build_gradio_app():
                 <section class="deploy-hero">
                   <div>
                     <div class="deploy-pill">AI Engineer</div>
-                    <h1>Multi-agent AI systems</h1>
-                    <p>Workflow routing, simulated execution.</p>
+                    <h1>Agent decisions first. Execution second.</h1>
+                    <p>A light-theme workflow that keeps the agent reasoning visible and the execution controls intentionally secondary.</p>
                   </div>
                   <div class="deploy-pill">{runtime_mode()}</div>
                 </section>
@@ -589,7 +800,7 @@ def build_gradio_app():
                     gr.Markdown("### Workflow")
                     gr.HTML(render_agent_overview_html())
 
-                    gr.Markdown("### Run Controls")
+                    gr.Markdown("### Human Review")
                     symbol = gr.Textbox(label="Target", value="AAPL")
                     strategy = gr.Dropdown(["Plan A", "Plan B", "Plan C", "No Run"], value="Plan A", label="Plan")
                     option_type = gr.Dropdown(["call", "put"], value="call", label="Variant")
