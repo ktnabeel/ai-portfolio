@@ -8,12 +8,7 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="page-{{ active_page }}">
-
   <header class="top-bar">
-    <a class="brand-lockup" href="/">
-      <span class="brand-mark">{{ config.site.brand_mark }}</span>
-      <span>{{ config.site.brand }}</span>
-    </a>
     <div class="status-line">
       <span class="status-dot"></span>
       {{ config.site.status_label }}
@@ -35,13 +30,12 @@
     </nav>
   </header>
 
-  <main class="content">
+  <main class="content" id="top">
     {% block content %}{% endblock %}
   </main>
 
   <footer class="app-footer">
-    <span>{{ config.site.brand }}</span>
-    <span class="footer-muted">{{ config.site.kicker }}</span>
+    <span>{{ config.site.copyright }}</span>
   </footer>
 
   <script>

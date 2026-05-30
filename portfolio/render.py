@@ -1,9 +1,9 @@
-import json
 from html import escape
 from typing import Any
 
 from .config import load_config
 from .models import Project
+
 
 def _tab_links_from_config(config: dict[str, Any]) -> dict[str, str]:
     """Return project-title → tab-id mapping from config's project_tab_links."""
@@ -13,6 +13,90 @@ def _tab_links_from_config(config: dict[str, Any]) -> dict[str, str]:
 def _tab_labels_from_config(config: dict[str, Any]) -> dict[str, str]:
     """Return tab-id → display-label mapping from config's tabs."""
     return config.get("tabs", {})
+
+
+_DEFAULT_PROJECT_CONTEXT: dict[str, dict[str, Any]] = {
+    "Portfolio Manager": {
+        "project_summary": "Production-style multi-agent portfolio manager that turns market data, sentiment, and risk signals into explainable portfolio actions.",
+        "problem": "Investment decisions require synthesizing fragmented market, technical, sentiment, and risk context quickly.",
+        "architecture": "FastAPI and LangGraph orchestrate specialized agents for security analysis, sentiment, regime, decisioning, execution, and portfolio management.",
+        "ai_application": "LLM agents produce structured analysis and a final Buy/Sell/Hold recommendation with confidence and rationale.",
+        "impact": "Shows ability to design agentic workflows, API boundaries, and explainable decision support for finance users.",
+        "proof_points": ["LangGraph orchestration", "FastAPI service surface", "Real-time yfinance data", "Structured portfolio rationale"],
+    },
+    "Trading Desk": {
+        "project_summary": "Options trading workbench combining quantitative pricing, market context, and agent-assisted trade review.",
+        "problem": "Options decisions need pricing math, market awareness, risk review, and a clear human approval path.",
+        "architecture": "LangGraph coordinates market, risk, regime, decision, and execution components with a Gradio control surface.",
+        "ai_application": "Agents analyze risk-reward and produce tradeable recommendations while keeping execution human-reviewed.",
+        "impact": "Demonstrates applied AI for regulated decision workflows where automation must remain auditable.",
+        "proof_points": ["Black-Scholes pricing", "Paper-trade execution", "MCP server integration", "Approval workflow"],
+    },
+    "Claim Processing": {
+        "project_summary": "Insurance claim intake assistant that extracts facts, flags fraud indicators, scores severity, and routes next steps.",
+        "problem": "Claims teams spend time converting unstructured incident text into repeatable triage decisions.",
+        "architecture": "A deterministic NLP and rules pipeline extracts claim fields, applies red-flag checks, classifies severity, and recommends routing.",
+        "ai_application": "The system applies AI-style document understanding patterns with explainable rules suitable for operational review.",
+        "impact": "Highlights automation design for insurance workflows where speed, consistency, and auditability matter.",
+        "proof_points": ["Free-text extraction", "Fraud red flags", "Severity classification", "Batch processing"],
+    },
+    "Insurance Underwriting Agent": {
+        "project_summary": "Underwriting assistant that reads applications, evaluates multidimensional risk, and returns structured policy decisions.",
+        "problem": "Underwriters need consistent extraction, risk factor discovery, and clear reasoning from incomplete application text.",
+        "architecture": "A four-dimension risk engine evaluates health, occupation, lifestyle, and financial signals, then builds policy context.",
+        "ai_application": "Agentic reasoning converts unstructured applicant details into risk scores, decisions, and auditable recommendations.",
+        "impact": "Shows domain modeling, decision logic, and explainability for high-stakes insurance workflows.",
+        "proof_points": ["40+ risk rules", "Risk score 0-100", "Policy context builder", "Batch underwriting"],
+    },
+    "Product Review Sentiment Analyzer": {
+        "project_summary": "Customer feedback analytics tool that turns product reviews into sentiment, keywords, and product-level summaries.",
+        "problem": "Teams need to understand review patterns at scale without manually reading every customer comment.",
+        "architecture": "Review ingestion, sentiment classification, aggregation, keyword extraction, and visualization are packaged in a Gradio app.",
+        "ai_application": "NLP classification and summarization patterns convert unstructured reviews into structured product insights.",
+        "impact": "Demonstrates practical NLP for product, support, and operations teams.",
+        "proof_points": ["Per-review sentiment", "Product rollups", "Keyword extraction", "Visual distributions"],
+    },
+    "Finance Planning": {
+        "project_summary": "Financial planning assistant for portfolio analysis, budgeting scenarios, and goal-oriented decision support.",
+        "problem": "Personal and portfolio finance decisions require combining goals, market context, and risk into clear next actions.",
+        "architecture": "Financial analysis modules collect market data, compute signals, and present recommendations through an interactive UI.",
+        "ai_application": "Agent-style analysis blends technical, fundamental, sentiment, and risk signals for planning guidance.",
+        "impact": "Shows how AI workflows can support finance users with transparent, scenario-driven outputs.",
+        "proof_points": ["Budget scenarios", "Goal tracking", "Market data", "Risk scoring"],
+    },
+    "Movie Recommendations": {
+        "project_summary": "Recommendation app that translates natural-language preferences into personalized movie suggestions.",
+        "problem": "Users express taste in messy language, while recommenders need structured signals and ranked outputs.",
+        "architecture": "A hybrid recommender combines preference parsing, embeddings, collaborative filtering, and TMDB metadata.",
+        "ai_application": "NLP-style parsing extracts taste signals and blends them with ML recommenders for ranked suggestions.",
+        "impact": "Demonstrates recommendation systems, ensemble modeling, and user-centered AI interaction.",
+        "proof_points": ["Two-tower embeddings", "SVD filtering", "Preference parser", "TMDB integration"],
+    },
+}
+
+
+def _project_details_from_config(config: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    details = {title: dict(values) for title, values in _DEFAULT_PROJECT_CONTEXT.items()}
+    for item in config.get("projects", []):
+        if not isinstance(item, dict):
+            continue
+        title = str(item.get("title", "")).strip()
+        if not title:
+            continue
+        project_detail = details.get(title, {}).copy()
+        for key in (
+            "project_summary",
+            "problem",
+            "architecture",
+            "ai_application",
+            "impact",
+            "proof_points",
+        ):
+            if key in item:
+                project_detail[key] = item[key]
+        if project_detail:
+            details[title] = project_detail
+    return details
 
 # Rich inline detail content for each project — used in static (Vercel) deployment
 # to provide self-contained expandable cards with no external links.
@@ -199,30 +283,67 @@ _PROJECT_DETAILS: dict[str, str] = {
 }
 
 
-def _tab_link(display_label: str, link_label: str, class_name: str = "") -> str:
-    """Generate a button that navigates to the matching Gradio tab."""
+def _tab_link(tab_id: str, display_label: str, link_label: str, class_name: str = "") -> str:
+    """Generate a button handled by the Gradio tab-switch delegation script."""
     class_attr = ' class="' + class_name + '"' if class_name else ""
-    js_label = json.dumps(display_label)
-    js = (
-        "(function(){"
-        f"var label={js_label};"
-        "var clean=function(s){return (s||'').replace(/\\s+/g,' ').trim();};"
-        "var wanted=clean(label);"
-        "var tabs=Array.from(document.querySelectorAll('[role=\"tab\"],button'));"
-        "var b=tabs.find(function(x){return clean(x.textContent)===wanted;})||"
-        "tabs.find(function(x){return clean(x.textContent).indexOf(wanted)>=0;});"
-        "if(b){b.click();setTimeout(function(){b.scrollIntoView({block:'nearest',inline:'nearest'});},50);}"
-        "})();return false"
-    )
     return (
-        '<button type="button" onclick="'
-        + escape(js)
-        + '"'
+        '<button type="button"'
         + class_attr
+        + ' data-tab-target="'
+        + escape(tab_id, quote=True)
+        + '" data-tab-label="'
+        + escape(display_label, quote=True)
+        + '"'
         + '>'
         + escape(link_label)
         + "</button>"
     )
+
+
+def gradio_tab_switch_js() -> str:
+    return """
+(function() {
+  if (window.__portfolioTabSwitchBound) return;
+  window.__portfolioTabSwitchBound = true;
+
+  function clean(value) {
+    return (value || '').replace(/\\s+/g, ' ').trim();
+  }
+
+  function findTab(label) {
+    var wanted = clean(label);
+    if (!wanted) return null;
+    var tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+    var exact = tabs.find(function(tab) {
+      return clean(tab.textContent) === wanted;
+    });
+    if (exact) return exact;
+    return tabs.find(function(tab) {
+      return clean(tab.textContent).indexOf(wanted) >= 0;
+    }) || null;
+  }
+
+  document.addEventListener('click', function(event) {
+    var trigger = event.target.closest('[data-tab-target]');
+    if (!trigger) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    var label = trigger.getAttribute('data-tab-label') || trigger.getAttribute('data-tab-target');
+    var tab = findTab(label);
+    if (!tab) return;
+
+    tab.click();
+    setTimeout(function() {
+      tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }, 80);
+  });
+})();
+"""
+
+
+def _gradio_tab_switch_script() -> str:
+    return f"<script>{gradio_tab_switch_js()}</script>"
 
 
 def render_page(projects: list[Project], mode: str = "static", config: dict[str, Any] | None = None) -> str:
@@ -230,8 +351,15 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
     site = config["site"]
     tab_links = _tab_links_from_config(config)
     tab_labels = _tab_labels_from_config(config)
+    project_details = _project_details_from_config(config)
     page = _render_shell(
-        _render_project_grid(projects, mode=mode, tab_links=tab_links, tab_labels=tab_labels),
+        _render_project_grid(
+            projects,
+            mode=mode,
+            tab_links=tab_links,
+            tab_labels=tab_labels,
+            project_details=project_details,
+        ),
         config,
         mode=mode,
     )
@@ -245,7 +373,7 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
             "{document.documentElement.setAttribute('data-theme','dark')};"
             "})();</script>"
         )
-        return f"<style>{_css()}</style>{theme_init_js}{page}"
+        return f"<style>{_css()}</style>{theme_init_js}{page}{_gradio_tab_switch_script()}"
 
     return f"""<!doctype html>
 <html lang="en">
@@ -318,14 +446,16 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
     )
 
     return f"""
-  <main class="portfolio-page">
+  <main class="portfolio-page" id="top">
     <section class="workspace">
       <header class="top-bar">
-        <div>
+        <div class="top-bar-left">
           <span class="status-dot"></span>
           {escape(site["status_label"])}
           <span class="top-bar-sep"></span>
           <a href="{escape(site["linkedin_url"])}" target="_blank" rel="noreferrer" class="top-bar-contact">Contact</a>
+        </div>
+        <div class="top-bar-right">
           <button class="theme-toggle" onclick="(function(){{var h=document.documentElement;var t=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',t);try{{localStorage.setItem('theme',t)}}catch(e){{}}}})();" aria-label="Toggle dark/light theme" title="Toggle theme">
             <span class="theme-icon-light">☀️</span>
             <span class="theme-icon-dark">🌙</span>
@@ -355,6 +485,9 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
         {projects_html}
       </section>
     </section>
+    <div class="landing-footer">
+      <span>{escape(site.get("copyright", "© neurons.fyi"))}</span>
+    </div>
   </main>"""
 
 
@@ -363,6 +496,7 @@ def _render_project_grid(
     mode: str,
     tab_links: dict[str, str] | None = None,
     tab_labels: dict[str, str] | None = None,
+    project_details: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     if not projects:
         return """
@@ -373,7 +507,14 @@ def _render_project_grid(
 """
 
     cards = "\n".join(
-        _render_project_card(index, project, mode=mode, tab_links=tab_links, tab_labels=tab_labels)
+        _render_project_card(
+            index,
+            project,
+            mode=mode,
+            tab_links=tab_links,
+            tab_labels=tab_labels,
+            details=(project_details or {}).get(project.title),
+        )
         for index, project in enumerate(projects, start=1)
     )
     return f'<div class="project-list">{cards}</div>'
@@ -385,6 +526,7 @@ def _render_project_card(
     mode: str,
     tab_links: dict[str, str] | None = None,
     tab_labels: dict[str, str] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> str:
     if tab_links is None:
         tab_links = {}
@@ -401,16 +543,16 @@ def _render_project_card(
     tab_id = tab_links.get(project.title)
     if mode == "gradio" and project.status == "Built" and tab_id:
         display_label = tab_labels.get(tab_id, tab_id)
-        links.append(_tab_link(display_label, "Open", "card-link card-link-demo"))
+        links.append(_tab_link(tab_id, display_label, "Open", "card-link card-link-demo"))
 
     # Static deployment: expandable inline details instead of external links.
     expand_html = ""
     if mode == "static":
-        details = _PROJECT_DETAILS.get(project.title, "")
-        if details:
+        static_details = _PROJECT_DETAILS.get(project.title, "")
+        if static_details:
             expand_html = f"""
           <div class="project-expand" id="expand-{index}">
-            {details}
+            {static_details}
           </div>"""
             links.append(
                 f'<button class="expand-toggle" onclick="toggleExpand({index})"'
@@ -421,9 +563,11 @@ def _render_project_card(
             links.append('<span class="muted">Links coming soon</span>')
 
     link_html = "".join(links) or '<span class="muted">Links coming soon</span>'
+    insight_html = _render_project_insight(details)
 
     return f"""
-        <article class="project-card" id="card-{index}">
+        <article class="project-card" id="card-{index}" tabindex="0">
+          <div class="project-glow" aria-hidden="true"></div>
           <div class="project-number">{index:02d}</div>
           <div class="project-main">
             <div class="project-meta">
@@ -434,10 +578,50 @@ def _render_project_card(
             <p>{escape(project.outcome)}</p>
             <div class="tag-row">{tags}</div>
           </div>
+          {insight_html}
           <div class="project-links">{link_html}</div>
           {expand_html}
         </article>
 """
+
+
+def _render_project_insight(details: dict[str, Any] | None) -> str:
+    if not details:
+        return ""
+
+    proof_points = details.get("proof_points", [])
+    if isinstance(proof_points, str):
+        proof_values = [item.strip() for item in proof_points.split(",") if item.strip()]
+    elif proof_points:
+        proof_values = [str(item).strip() for item in proof_points if str(item).strip()]
+    else:
+        proof_values = []
+    proof_html = "".join(f"<li>{escape(item)}</li>" for item in proof_values[:4])
+
+    return f"""
+          <aside class="project-insight" aria-label="Project context">
+            <p class="insight-kicker">Project context</p>
+            <p class="insight-summary">{escape(str(details.get("project_summary", "")))}</p>
+            <div class="insight-grid">
+              <div>
+                <span>Problem</span>
+                <p>{escape(str(details.get("problem", "")))}</p>
+              </div>
+              <div>
+                <span>Architecture</span>
+                <p>{escape(str(details.get("architecture", "")))}</p>
+              </div>
+              <div>
+                <span>AI role</span>
+                <p>{escape(str(details.get("ai_application", "")))}</p>
+              </div>
+              <div>
+                <span>Impact</span>
+                <p>{escape(str(details.get("impact", "")))}</p>
+              </div>
+            </div>
+            <ul class="insight-proof">{proof_html}</ul>
+          </aside>"""
 
 
 def _css() -> str:
@@ -445,7 +629,7 @@ def _css() -> str:
 /* ===== Light Theme (default) ===== */
 :root {
   color-scheme: light;
-  --theme-bg: #eef3f8;
+  --theme-bg: #ffffff;
   --theme-panel: #ffffff;
   --theme-ink: #101828;
   --theme-muted: #667085;
@@ -492,9 +676,7 @@ def _css() -> str:
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 body {
   margin: 0;
-  background:
-    radial-gradient(circle at 16% 0%, rgba(37,99,235,.12), transparent 34%),
-    linear-gradient(180deg, #f8fbff 0%, var(--theme-bg) 48%, #e8eef6 100%);
+  background: var(--theme-bg);
   color: var(--theme-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition: background-color .3s ease, color .3s ease;
@@ -502,16 +684,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 [data-theme="dark"] body {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(28,160,241,.12), transparent 34%),
-    linear-gradient(180deg, #252a2d 0%, var(--theme-bg) 54%, #272d30 100%);
+  background: var(--theme-bg);
 }
 a { color: inherit; }
 
 .portfolio-page {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
 }
 .eyebrow {
   margin: 0 0 12px;
@@ -527,12 +707,13 @@ h1, h2, h3, p { margin-top: 0; }
   min-width: 0;
   max-width: 1280px;
   width: 100%;
+  flex: 1;
   margin: 0 auto;
-  padding: 18px;
+  padding: 4px 12px 18px;
 }
 .top-bar {
   position: sticky;
-  top: 10px;
+  top: 6px;
   z-index: 100;
   min-height: 52px;
   display: flex;
@@ -543,20 +724,28 @@ h1, h2, h3, p { margin-top: 0; }
   border: 1px solid var(--theme-line);
   border-radius: 16px;
   padding: 0 16px;
-  background: rgba(var(--theme-panel-rgb), 0.82);
+  background: rgba(var(--theme-panel-rgb), 0.92);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: 0 16px 44px var(--theme-shadow), 0 1px 2px rgba(16,24,40,.06);
   transition: box-shadow .35s ease, background .35s ease, border-color .35s ease, transform .35s ease;
 }
-.top-bar div {
+.top-bar-left,
+.top-bar-right {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
   gap: 7px;
   color: var(--theme-muted);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 500;
+}
+.top-bar-left {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.top-bar-right {
+  margin-left: auto;
 }
 .status-dot {
   width: 9px;
@@ -575,7 +764,7 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .top-bar-contact {
   color: var(--theme-blue) !important;
-  font-weight: 850;
+  font-weight: 600;
   text-decoration: none;
   transition: color .18s ease;
 }
@@ -617,20 +806,20 @@ h1, h2, h3, p { margin-top: 0; }
 [data-theme="dark"] .theme-icon-dark  { opacity: 1; transform: scale(1); }
 
 .intro {
-  padding: 48px 8px 30px;
+  padding: 38px 8px 24px;
   max-width: 980px;
 }
 .intro h2 {
   margin-bottom: 18px;
-  font-size: clamp(42px, 6vw, 78px);
+  font-size: clamp(36px, 5vw, 64px);
   line-height: .95;
   letter-spacing: 0;
 }
 .intro p:not(.eyebrow) {
   max-width: 720px;
   color: var(--theme-muted);
-  font-size: 18px;
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.65;
 }
 
 /* ===== Stats Strip ===== */
@@ -719,84 +908,216 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .project-list {
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  perspective: 1400px;
 }
 .project-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) auto;
-  gap: 22px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: center;
   border: 1px solid var(--theme-line);
   border-radius: 16px;
-  padding: 18px;
+  padding: 14px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.96)),
+    linear-gradient(180deg, rgba(var(--theme-panel-rgb), .92), rgba(var(--theme-panel-rgb), .99)),
     var(--theme-panel);
-  box-shadow: 0 18px 42px var(--theme-shadow);
-  transition: border-color .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+  box-shadow: 0 14px 34px var(--theme-shadow);
+  transform-style: preserve-3d;
+  outline: none;
+  transition: border-color .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, background .25s ease;
 }
 .project-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px) rotateX(1deg) rotateY(-.6deg);
   border-color: var(--theme-card-hover-border);
-  box-shadow: 0 26px 64px var(--theme-shadow-hover);
+  box-shadow: 0 24px 64px var(--theme-shadow-hover), 0 2px 0 rgba(var(--theme-panel-rgb),.55) inset;
+}
+.project-card:focus-within,
+.project-card:focus {
+  border-color: var(--theme-blue);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.14), 0 32px 90px var(--theme-shadow-hover);
+}
+.project-glow {
+  position: absolute;
+  inset: -45% auto auto -18%;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,.18), rgba(15,143,110,.08) 42%, transparent 70%);
+  opacity: .58;
+  pointer-events: none;
+  transform: translateZ(-1px);
+  transition: opacity .25s ease, transform .25s ease;
+  z-index: -1;
+}
+.project-card:hover .project-glow,
+.project-card:focus-within .project-glow,
+.project-card:focus .project-glow {
+  opacity: .9;
+  transform: translate3d(10px, 8px, -1px) scale(1.08);
 }
 .project-number {
-  width: 54px;
-  height: 54px;
+  position: relative;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
   display: grid;
   place-items: center;
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(37,99,235,.12), rgba(15,143,110,.12));
   color: var(--theme-blue);
+  font-size: 12px;
   font-weight: 950;
+}
+.project-main {
+  position: relative;
+  z-index: 2;
 }
 .project-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 .project-meta span {
   display: inline-flex;
   border: 1px solid var(--theme-line);
   border-radius: 999px;
-  padding: 5px 9px;
+  padding: 4px 8px;
   color: var(--theme-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 760;
 }
 .project-card h3 {
-  margin-bottom: 8px;
-  font-size: 24px;
-  line-height: 1.2;
+  margin-bottom: 6px;
+  font-size: 18px;
+  line-height: 1.18;
 }
 .project-card p {
   max-width: 780px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   color: var(--theme-muted);
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.5;
 }
 .tag-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .tag-row span {
   border-radius: 999px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: var(--theme-tag-bg);
   color: var(--theme-tag-text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
 }
 .project-links {
-  min-width: 128px;
+  position: relative;
+  z-index: 8;
+  min-width: 112px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   color: var(--theme-blue);
-  font-size: 14px;
+  font-size: 13px;
   flex-wrap: wrap;
+}
+.project-insight {
+  grid-column: 2 / 4;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 0;
+  margin-top: -8px;
+  border: 1px solid var(--theme-line);
+  border-radius: 14px;
+  padding: 0 12px;
+  background:
+    linear-gradient(135deg, rgba(var(--theme-panel-rgb), .98), rgba(var(--theme-panel-rgb), .92)),
+    var(--theme-panel);
+  box-shadow: 0 20px 50px rgba(15,23,42,.12);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: max-height .35s ease, margin-top .25s ease, opacity .22s ease, padding .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1);
+  z-index: 3;
+}
+.project-card:hover .project-insight,
+.project-card:focus-within .project-insight,
+.project-card:focus .project-insight {
+  max-height: 680px;
+  margin-top: 0;
+  padding: 12px;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+.insight-kicker {
+  margin: 0;
+  color: var(--theme-green);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.insight-summary {
+  max-width: none;
+  margin: 0;
+  color: var(--theme-ink);
+  font-size: 13px;
+  font-weight: 780;
+  line-height: 1.45;
+}
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.insight-grid div {
+  border: 1px solid var(--theme-line);
+  border-radius: 10px;
+  padding: 8px;
+  background: var(--theme-surface);
+}
+.insight-grid span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--theme-blue);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.insight-grid p {
+  max-width: none;
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 11px;
+  line-height: 1.42;
+}
+.insight-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.insight-proof li {
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(15,143,110,.1);
+  color: var(--theme-green);
+  font-size: 11px;
+  font-weight: 800;
 }
 
 /* ===== Card action links ===== */
@@ -943,14 +1264,41 @@ h1, h2, h3, p { margin-top: 0; }
   color: var(--theme-muted);
 }
 
+.landing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 20px 8px 10px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 980px) {
   .capability-strip {
     grid-template-columns: 1fr;
   }
+  .project-insight {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 4px;
+    max-height: none;
+    padding: 14px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    box-shadow: 0 14px 34px var(--theme-shadow);
+  }
+  .project-card:hover .project-insight,
+  .project-card:focus-within .project-insight,
+  .project-card:focus .project-insight {
+    transform: none;
+  }
 }
 @media (max-width: 720px) {
   .workspace {
-    padding: 12px;
+    padding: 4px 10px 12px;
   }
   .top-bar {
     align-items: stretch;
@@ -960,8 +1308,17 @@ h1, h2, h3, p { margin-top: 0; }
     padding: 16px;
     gap: 12px;
   }
-  .top-bar div {
+  .top-bar-left,
+  .top-bar-right {
     margin-bottom: 0;
+  }
+  .top-bar-left {
+    flex-wrap: wrap;
+  }
+  .top-bar-right {
+    width: 100%;
+    justify-content: flex-end;
+    margin-left: 0;
   }
   .section-heading {
     align-items: flex-start;
@@ -977,10 +1334,21 @@ h1, h2, h3, p { margin-top: 0; }
     grid-template-columns: 1fr;
     align-items: start;
     padding: 20px;
+    transform: none;
+  }
+  .project-card:hover {
+    transform: translateY(-3px);
   }
   .project-links {
     justify-content: flex-start;
     margin-top: 12px;
+  }
+  .insight-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-footer {
+    padding: 18px 2px 8px;
+    font-size: 11px;
   }
 }
 """

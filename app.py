@@ -5,7 +5,7 @@ import gradio as gr
 from portfolio.config import load_config
 from portfolio.db import get_projects, init_db, seed_projects
 from portfolio.project_templates import get_project_templates
-from portfolio.render import render_page
+from portfolio.render import gradio_tab_switch_js, render_page
 from portfolio.financial import render_financial_tab, DARK_CSS
 from portfolio.claim_processing.render import render_claim_tab, CLAIM_DARK_CSS
 from portfolio.movie_recommender import render_movie_tab, MOVIE_CSS
@@ -21,16 +21,12 @@ APP_CSS = """
 .gradio-container { max-width: none !important; padding: 0 !important; }
 footer { display: none !important; }
 body, .gradio-container {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(37,99,235,.12), transparent 34%),
-    linear-gradient(180deg, #f8fbff 0%, var(--theme-bg) 48%, #e8eef6 100%) !important;
+  background: var(--theme-bg) !important;
   color: var(--theme-ink) !important;
 }
 html[data-theme="dark"] body,
 html[data-theme="dark"] .gradio-container {
-  background:
-    radial-gradient(circle at 16% 0%, rgba(28,160,241,.12), transparent 34%),
-    linear-gradient(180deg, #252a2d 0%, var(--theme-bg) 54%, #272d30 100%) !important;
+  background: var(--theme-bg) !important;
 }
 
 /* ===== Tighten Gradio Layout ===== */
@@ -40,13 +36,24 @@ html[data-theme="dark"] .gradio-container {
 .gr-padded { padding: 8px !important; }
 .gr-form { gap: 8px !important; }
 .tab-nav, .tabs > .tab-nav {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  overflow: visible !important;
   background: rgba(var(--theme-panel-rgb), .82) !important;
   border-bottom: 1px solid var(--theme-line) !important;
   backdrop-filter: blur(18px) saturate(160%);
 }
+.tab-nav button,
+.tabs > .tab-nav button {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 6px 10px !important;
+}
 button, .gr-button {
   border-radius: 10px !important;
-  font-weight: 800 !important;
+  font-weight: 600 !important;
 }
 input, textarea, select, .wrap, .container, .block {
   border-color: var(--theme-line) !important;
@@ -197,6 +204,7 @@ def build_app() -> gr.Blocks:
 
     with gr.Blocks(
         title=config["site"]["title"],
+        js=gradio_tab_switch_js(),
     ) as demo:
         with gr.Tabs():
             with gr.TabItem("Portfolio"):
