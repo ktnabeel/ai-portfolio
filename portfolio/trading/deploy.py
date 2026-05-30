@@ -242,14 +242,14 @@ def _money(value: float) -> str:
 def render_agent_overview_html() -> str:
     return """
     <div class="deploy-panel">
-      <h2>AI Engineer</h2>
+      <h2>Workflow</h2>
       <div class="agent-grid">
-        <div class="workflow-card"><div class="topline"><div class="bubble">1</div><span class="label">Security</span></div><div class="value">Identity and validation.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">2</div><span class="label">Sentiment</span></div><div class="value">News and market mood.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">3</div><span class="label">Regime</span></div><div class="value">Bull, bear, or neutral.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">4</div><span class="label">Decision</span></div><div class="value">Select the strategy.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">5</div><span class="label">Execution</span></div><div class="value">Simulated order routing.</div></div>
-        <div class="workflow-card"><div class="topline"><div class="bubble">6</div><span class="label">Portfolio</span></div><div class="value">Summarize the result.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">1</div><span class="label">Profile</span></div><div class="value">Identity and validation.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">2</div><span class="label">Signal</span></div><div class="value">News and market mood.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">3</div><span class="label">Context</span></div><div class="value">Bull, bear, or neutral.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">4</div><span class="label">Plan</span></div><div class="value">Select the next step.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">5</div><span class="label">Tool Use</span></div><div class="value">Simulated action routing.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">6</div><span class="label">Summary</span></div><div class="value">Summarize the result.</div></div>
       </div>
     </div>
     """
@@ -358,7 +358,7 @@ def render_account_summary_html() -> str:
 
     return f"""
     <div class="deploy-panel">
-      <h2>Account Snapshot</h2>
+      <h2>System Snapshot</h2>
       <div class="deploy-kpi-grid">
         <div class="deploy-kpi"><span class="label">Cash</span><span class="value">{_money(account.cash)}</span></div>
         <div class="deploy-kpi"><span class="label">Total Equity</span><span class="value">{_money(account.total_equity)}</span></div>
@@ -366,21 +366,21 @@ def render_account_summary_html() -> str:
         <div class="deploy-kpi"><span class="label">Positions</span><span class="value">{len(account.positions)}</span></div>
       </div>
 
-      <h3>Open Positions</h3>
+      <h3>Active Runs</h3>
       <div style="overflow:auto; margin-bottom:18px;">
         <table class="deploy-table">
           <thead>
-            <tr><th>Symbol</th><th>Strategy</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Entry</th><th>P&amp;L</th></tr>
+            <tr><th>Target</th><th>Plan</th><th>Variant</th><th>Ref</th><th>Date</th><th>Count</th><th>Entry</th><th>Delta</th></tr>
           </thead>
           <tbody>{positions_rows}</tbody>
         </table>
       </div>
 
-      <h3>Recent Orders</h3>
+      <h3>Recent Actions</h3>
       <div style="overflow:auto; margin-bottom:18px;">
         <table class="deploy-table">
           <thead>
-            <tr><th>Order</th><th>Status</th><th>Qty</th><th>Fill</th><th>Total</th><th>Notes</th></tr>
+            <tr><th>Action</th><th>Status</th><th>Qty</th><th>Fill</th><th>Total</th><th>Notes</th></tr>
           </thead>
           <tbody>{orders_rows}</tbody>
         </table>
@@ -415,43 +415,43 @@ def render_home_html() -> str:
       <div>
         <div class="deploy-pill">AI Engineer</div>
         <h1>Multi-agent AI systems</h1>
-        <p>Agent workflow, simulated execution.</p>
+        <p>Workflow routing, simulated execution.</p>
       </div>
       <div class="deploy-pill">{runtime_mode()}</div>
     </section>
 
     <div class="deploy-grid">
       <section class="deploy-panel">
-        <h2>Multi-Agent System</h2>
+        <h2>Workflow</h2>
         {render_agent_overview_html()}
-        <h3>Execution Console</h3>
+        <h3>Run Console</h3>
         <form class="deploy-form" method="post" action="/api/place-order">
-          <input name="symbol" placeholder="Symbol, e.g. AAPL" value="AAPL" />
+          <input name="symbol" placeholder="Target, e.g. AAPL" value="AAPL" />
           <select name="strategy">
-            <option>Call</option>
-            <option>Put</option>
-            <option>Strangle</option>
-            <option>No Trade</option>
+            <option>Plan A</option>
+            <option>Plan B</option>
+            <option>Plan C</option>
+            <option>No Run</option>
           </select>
-          <input name="option_type" placeholder="Option type, e.g. call" value="call" />
-          <input name="strike" placeholder="Strike" type="number" step="0.01" value="150" />
-          <input name="expiration" placeholder="Expiration YYYY-MM-DD" value="" />
-          <input name="quantity" placeholder="Quantity" type="number" step="1" value="1" />
-          <input name="limit_price" placeholder="Limit price" type="number" step="0.01" value="" />
-          <button type="submit">Place Paper Order</button>
+          <input name="option_type" placeholder="Variant, e.g. call" value="call" />
+          <input name="strike" placeholder="Reference" type="number" step="0.01" value="150" />
+          <input name="expiration" placeholder="Run date YYYY-MM-DD" value="" />
+          <input name="quantity" placeholder="Count" type="number" step="1" value="1" />
+          <input name="limit_price" placeholder="Threshold" type="number" step="0.01" value="" />
+          <button type="submit">Run Simulation</button>
         </form>
 
         <div style="margin-top:18px;">
           <form class="deploy-form" method="post" action="/api/reset">
-            <button type="submit" style="background: rgba(255,255,255,.08);">Reset Simulation</button>
+            <button type="submit" style="background: rgba(255,255,255,.08);">Reset State</button>
           </form>
         </div>
 
         <div style="margin-top:18px;">
           <form class="deploy-form" method="post" action="/api/close">
-            <input name="position_id" placeholder="Position ID to close" />
-            <input name="exit_price" placeholder="Exit price (optional)" type="number" step="0.01" />
-            <button type="submit" style="background: rgba(255,255,255,.08);">Close Simulation Position</button>
+            <input name="position_id" placeholder="Run ID to resolve" />
+            <input name="exit_price" placeholder="Exit value (optional)" type="number" step="0.01" />
+            <button type="submit" style="background: rgba(255,255,255,.08);">Resolve Run</button>
           </form>
         </div>
       </section>
@@ -577,7 +577,7 @@ def build_gradio_app():
                   <div>
                     <div class="deploy-pill">AI Engineer</div>
                     <h1>Multi-agent AI systems</h1>
-                    <p>Agent workflow, simulated execution.</p>
+                    <p>Workflow routing, simulated execution.</p>
                   </div>
                   <div class="deploy-pill">{runtime_mode()}</div>
                 </section>
@@ -586,30 +586,30 @@ def build_gradio_app():
 
             with gr.Row():
                 with gr.Column(scale=1, min_width=340):
-                    gr.Markdown("### Multi-Agent Console")
+                    gr.Markdown("### Workflow")
                     gr.HTML(render_agent_overview_html())
 
-                    gr.Markdown("### Simulation Controls")
-                    symbol = gr.Textbox(label="Symbol", value="AAPL")
-                    strategy = gr.Dropdown(["Call", "Put", "Strangle", "No Trade"], value="Call", label="Strategy")
-                    option_type = gr.Dropdown(["call", "put"], value="call", label="Option Type")
-                    strike = gr.Textbox(label="Strike", value="150")
-                    expiration = gr.Textbox(label="Expiration", placeholder="YYYY-MM-DD")
-                    quantity = gr.Number(label="Quantity", value=1, precision=0)
-                    limit_price = gr.Textbox(label="Limit Price", placeholder="Optional")
-                    place_btn = gr.Button("Place Order", variant="primary")
+                    gr.Markdown("### Run Controls")
+                    symbol = gr.Textbox(label="Target", value="AAPL")
+                    strategy = gr.Dropdown(["Plan A", "Plan B", "Plan C", "No Run"], value="Plan A", label="Plan")
+                    option_type = gr.Dropdown(["call", "put"], value="call", label="Variant")
+                    strike = gr.Textbox(label="Reference", value="150")
+                    expiration = gr.Textbox(label="Run Date", placeholder="YYYY-MM-DD")
+                    quantity = gr.Number(label="Count", value=1, precision=0)
+                    limit_price = gr.Textbox(label="Threshold", placeholder="Optional")
+                    place_btn = gr.Button("Run Simulation", variant="primary")
 
-                    gr.Markdown("### Position")
-                    position_id = gr.Textbox(label="Position ID", placeholder="POS-...")
-                    exit_price = gr.Textbox(label="Exit Price", placeholder="Optional")
-                    close_btn = gr.Button("Close Position")
+                    gr.Markdown("### Resolve")
+                    position_id = gr.Textbox(label="Run ID", placeholder="RUN-...")
+                    exit_price = gr.Textbox(label="Exit Value", placeholder="Optional")
+                    close_btn = gr.Button("Resolve Run")
 
-                    reset_btn = gr.Button("Reset Simulation")
+                    reset_btn = gr.Button("Reset State")
                     action_status = gr.HTML("")
 
                 with gr.Column(scale=2, min_width=500):
                     account_output = gr.HTML(render_account_summary_html())
-                    refresh_btn = gr.Button("Refresh Simulation")
+                    refresh_btn = gr.Button("Refresh State")
 
             place_btn.click(
                 fn=_place_order,

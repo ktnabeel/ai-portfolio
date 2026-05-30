@@ -43,7 +43,8 @@ def test_fastapi_health_and_home_page() -> None:
     assert home.status_code == 200
     assert "Multi-agent AI systems" in home.text
     assert "AI Engineer" in home.text
-    assert "Account Snapshot" in home.text
+    assert "Workflow" in home.text
+    assert "System Snapshot" in home.text
 
 
 def test_place_close_and_reset_flow() -> None:

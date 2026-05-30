@@ -165,70 +165,70 @@ def _render_page() -> str:
       <div>
         <div class="pill">AI Engineer</div>
         <h1>Multi-agent AI systems</h1>
-        <p>Agent workflow, simulated execution.</p>
+        <p>Workflow routing, simulated execution.</p>
       </div>
       <div class="pill">light theme</div>
     </section>
     <div class="grid">
       <section class="panel">
-        <h2>Multi-Agent System</h2>
+        <h2>Workflow</h2>
         <div class="mini-grid">
-          <div class="card"><span class="label">Security Agent</span><span class="value">Identity & validation</span></div>
-          <div class="card"><span class="label">Sentiment Agent</span><span class="value">News & market mood</span></div>
-          <div class="card"><span class="label">Regime Agent</span><span class="value">Bull / Bear / Neutral</span></div>
-          <div class="card"><span class="label">Decision Agent</span><span class="value">Strategy selection</span></div>
-          <div class="card"><span class="label">Execution Agent</span><span class="value">Simulated broker</span></div>
-          <div class="card"><span class="label">Portfolio Agent</span><span class="value">Final recommendation</span></div>
+          <div class="card"><span class="label">Profile</span><span class="value">Identity & validation</span></div>
+          <div class="card"><span class="label">Signal</span><span class="value">News & market mood</span></div>
+          <div class="card"><span class="label">Context</span><span class="value">Bull / Bear / Neutral</span></div>
+          <div class="card"><span class="label">Plan</span><span class="value">Next step selection</span></div>
+          <div class="card"><span class="label">Tool Use</span><span class="value">Simulated routing</span></div>
+          <div class="card"><span class="label">Summary</span><span class="value">Final recommendation</span></div>
         </div>
-        <h3>Execution Console</h3>
+        <h3>Run Console</h3>
         <form method="post" action="/api/place-order">
-          <input name="symbol" value="AAPL" placeholder="Symbol" />
+          <input name="symbol" value="AAPL" placeholder="Target" />
           <select name="strategy">
-            <option>Call</option>
-            <option>Put</option>
-            <option>Strangle</option>
-            <option>No Trade</option>
+            <option>Plan A</option>
+            <option>Plan B</option>
+            <option>Plan C</option>
+            <option>No Run</option>
           </select>
-          <input name="option_type" value="call" placeholder="Option type" />
-          <input name="strike" value="150" placeholder="Strike" />
-          <input name="expiration" placeholder="Expiration YYYY-MM-DD" />
+          <input name="option_type" value="call" placeholder="Variant" />
+          <input name="strike" value="150" placeholder="Reference" />
+          <input name="expiration" placeholder="Run date YYYY-MM-DD" />
           <input name="quantity" value="1" type="number" step="1" />
-          <input name="limit_price" placeholder="Limit price" />
-          <button type="submit">Place Paper Order</button>
+          <input name="limit_price" placeholder="Threshold" />
+          <button type="submit">Run Simulation</button>
         </form>
         <div style="margin-top:16px">
           <form method="post" action="/api/reset">
-            <button type="submit" style="background: rgba(255,255,255,.9); color: var(--ink); border:1px solid rgba(16,24,40,.10);">Reset Simulation</button>
+            <button type="submit" style="background: rgba(255,255,255,.9); color: var(--ink); border:1px solid rgba(16,24,40,.10);">Reset State</button>
           </form>
         </div>
         <div style="margin-top:16px">
           <form method="post" action="/api/close">
-            <input name="position_id" placeholder="Position ID" />
-            <input name="exit_price" placeholder="Exit price (optional)" />
-            <button type="submit" style="background: rgba(255,255,255,.9); color: var(--ink); border:1px solid rgba(16,24,40,.10);">Close Position</button>
+            <input name="position_id" placeholder="Run ID" />
+            <input name="exit_price" placeholder="Exit value (optional)" />
+            <button type="submit" style="background: rgba(255,255,255,.9); color: var(--ink); border:1px solid rgba(16,24,40,.10);">Resolve Run</button>
           </form>
         </div>
         <div class="hint">Positioning: AI engineer building multi-agent systems.</div>
       </section>
       <section class="panel">
-        <h2>Account Snapshot</h2>
+        <h2>System Snapshot</h2>
         <div class="kpis">
           <div class="kpi"><span class="label">Cash</span><span class="value">{_money(account.cash)}</span></div>
           <div class="kpi"><span class="label">Total Equity</span><span class="value">{_money(account.total_equity)}</span></div>
           <div class="kpi"><span class="label">Total P&L</span><span class="value">{_money(account.total_pnl)}</span></div>
           <div class="kpi"><span class="label">Positions</span><span class="value">{len(account.positions)}</span></div>
         </div>
-        <h3>Open Positions</h3>
+        <h3>Active Runs</h3>
         <div style="overflow:auto; margin-bottom:18px;">
           <table>
-            <thead><tr><th>Symbol</th><th>Strategy</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Entry</th><th>P&L</th></tr></thead>
+            <thead><tr><th>Target</th><th>Plan</th><th>Variant</th><th>Ref</th><th>Date</th><th>Count</th><th>Entry</th><th>Delta</th></tr></thead>
             <tbody>{positions}</tbody>
           </table>
         </div>
-        <h3>Recent Orders</h3>
+        <h3>Recent Actions</h3>
         <div style="overflow:auto;">
           <table>
-            <thead><tr><th>Order</th><th>Symbol</th><th>Strategy</th><th>Status</th><th>Total</th><th>Notes</th></tr></thead>
+            <thead><tr><th>Action</th><th>Target</th><th>Plan</th><th>Status</th><th>Total</th><th>Notes</th></tr></thead>
             <tbody>{orders}</tbody>
           </table>
         </div>
