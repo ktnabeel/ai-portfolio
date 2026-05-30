@@ -90,9 +90,49 @@ footer { display: none !important; }
 }
 .agent-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 14px 0 18px;
+}
+.workflow-card {
+  padding: 12px 12px 11px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid rgba(16,24,40,.06);
+  box-shadow: 0 10px 24px rgba(16,24,40,.04);
+}
+.workflow-card .topline {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+.workflow-card .bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 800;
+}
+.workflow-card .label {
+  display:block;
+  color: #101828;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  margin-bottom: 0;
+}
+.workflow-card .value {
+  font-size: 12px;
+  font-weight: 500;
+  color: #667085;
+  line-height: 1.4;
 }
 .agent-card {
   padding: 12px 14px;
@@ -202,14 +242,14 @@ def _money(value: float) -> str:
 def render_agent_overview_html() -> str:
     return """
     <div class="deploy-panel">
-      <h2>AI Engineer Overview</h2>
+      <h2>AI Engineer</h2>
       <div class="agent-grid">
-        <div class="agent-card"><span class="label">Security Agent</span><span class="value">Identity & validation</span></div>
-        <div class="agent-card"><span class="label">Sentiment Agent</span><span class="value">News & market mood</span></div>
-        <div class="agent-card"><span class="label">Regime Agent</span><span class="value">Bull / Bear / Neutral</span></div>
-        <div class="agent-card"><span class="label">Decision Agent</span><span class="value">Strategy selection</span></div>
-        <div class="agent-card"><span class="label">Execution Agent</span><span class="value">MCP paper broker</span></div>
-        <div class="agent-card"><span class="label">Portfolio Agent</span><span class="value">Final recommendation</span></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">1</div><span class="label">Security</span></div><div class="value">Identity and validation.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">2</div><span class="label">Sentiment</span></div><div class="value">News and market mood.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">3</div><span class="label">Regime</span></div><div class="value">Bull, bear, or neutral.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">4</div><span class="label">Decision</span></div><div class="value">Select the strategy.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">5</div><span class="label">Execution</span></div><div class="value">Simulated order routing.</div></div>
+        <div class="workflow-card"><div class="topline"><div class="bubble">6</div><span class="label">Portfolio</span></div><div class="value">Summarize the result.</div></div>
       </div>
     </div>
     """

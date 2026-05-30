@@ -42,7 +42,7 @@ def test_fastapi_health_and_home_page() -> None:
     home = client.get("/")
     assert home.status_code == 200
     assert "Multi-agent AI systems" in home.text
-    assert "AI Engineer Overview" in home.text
+    assert "AI Engineer" in home.text
     assert "Account Snapshot" in home.text
 
 
