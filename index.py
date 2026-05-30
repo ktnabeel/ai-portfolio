@@ -1,6 +1,8 @@
-"""Vercel FastAPI entrypoint for the mini trading deployment."""
+"""Vercel FastAPI entrypoint for the mini deployment."""
 
 from __future__ import annotations
 
-from app_deploy import app
+from portfolio.trading.deploy import create_fastapi_app
 
+
+app = create_fastapi_app()

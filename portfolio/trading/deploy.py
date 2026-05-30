@@ -21,10 +21,10 @@ html, body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(28,160,241,.18), transparent 32%),
-    radial-gradient(circle at top right, rgba(55,199,138,.14), transparent 24%),
-    linear-gradient(180deg, #0e1623 0%, #121a28 36%, #0b111c 100%);
-  color: rgba(255,255,255,.92);
+    radial-gradient(circle at top left, rgba(37,99,235,.08), transparent 32%),
+    radial-gradient(circle at top right, rgba(15,118,110,.06), transparent 24%),
+    linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+  color: #101828;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 footer { display: none !important; }
@@ -40,21 +40,22 @@ footer { display: none !important; }
   align-items: end;
   padding: 22px 24px;
   margin-bottom: 18px;
-  background: rgba(9, 14, 23, .64);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(16,24,40,.08);
   border-radius: 18px;
-  box-shadow: 0 20px 56px rgba(0,0,0,.24);
+  box-shadow: 0 20px 56px rgba(16,24,40,.08);
   backdrop-filter: blur(18px) saturate(160%);
 }
 .deploy-hero h1 {
   margin: 0 0 6px;
   font-size: clamp(28px, 4vw, 42px);
   line-height: 1.04;
+  color: #101828;
 }
 .deploy-hero p {
   margin: 0;
   max-width: 80ch;
-  color: rgba(255,255,255,.72);
+  color: #667085;
 }
 .deploy-pill {
   display: inline-flex;
@@ -62,9 +63,9 @@ footer { display: none !important; }
   justify-content: center;
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(55,199,138,.26);
-  background: rgba(55,199,138,.12);
-  color: #7ff0ba;
+  border: 1px solid rgba(37,99,235,.18);
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .08em;
@@ -77,14 +78,15 @@ footer { display: none !important; }
 }
 .deploy-panel {
   padding: 18px;
-  background: rgba(10, 16, 26, .78);
-  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(16,24,40,.08);
   border-radius: 18px;
-  box-shadow: 0 18px 44px rgba(0,0,0,.22);
+  box-shadow: 0 18px 44px rgba(16,24,40,.08);
 }
 .deploy-panel h2,
 .deploy-panel h3 {
   margin-top: 0;
+  color: #101828;
 }
 .agent-grid {
   display: grid;
@@ -95,12 +97,12 @@ footer { display: none !important; }
 .agent-card {
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
+  background: #f8fafc;
+  border: 1px solid rgba(16,24,40,.06);
 }
 .agent-card .label {
   display: block;
-  color: rgba(255,255,255,.65);
+  color: #667085;
   font-size: 11px;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -109,6 +111,7 @@ footer { display: none !important; }
 .agent-card .value {
   font-size: 15px;
   font-weight: 800;
+  color: #101828;
 }
 .deploy-kpi-grid {
   display: grid;
@@ -119,12 +122,12 @@ footer { display: none !important; }
 .deploy-kpi {
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
+  background: #f8fafc;
+  border: 1px solid rgba(16,24,40,.06);
 }
 .deploy-kpi .label {
   display: block;
-  color: rgba(255,255,255,.65);
+  color: #667085;
   font-size: 11px;
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -133,6 +136,7 @@ footer { display: none !important; }
 .deploy-kpi .value {
   font-size: 18px;
   font-weight: 800;
+  color: #101828;
 }
 .deploy-form {
   display: grid;
@@ -145,15 +149,16 @@ footer { display: none !important; }
   width: 100%;
   box-sizing: border-box;
   border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.10);
-  background: rgba(255,255,255,.04);
-  color: rgba(255,255,255,.92);
+  border: 1px solid rgba(16,24,40,.10);
+  background: #ffffff;
+  color: #101828;
   padding: 10px 12px;
 }
 .deploy-form button {
   cursor: pointer;
   font-weight: 800;
-  background: linear-gradient(135deg, rgba(28,160,241,.9), rgba(55,199,138,.9));
+  background: linear-gradient(135deg, rgba(37,99,235,.92), rgba(13,148,136,.92));
+  color: #ffffff;
   border-color: transparent;
 }
 .deploy-table {
@@ -164,12 +169,12 @@ footer { display: none !important; }
 .deploy-table th,
 .deploy-table td {
   padding: 8px 10px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(16,24,40,.08);
   vertical-align: top;
   text-align: left;
 }
 .deploy-table th {
-  color: rgba(255,255,255,.65);
+  color: #667085;
   font-size: 11px;
   letter-spacing: .05em;
   text-transform: uppercase;
@@ -198,10 +203,6 @@ def render_agent_overview_html() -> str:
     return """
     <div class="deploy-panel">
       <h2>AI Engineer Overview</h2>
-      <p style="color:rgba(255,255,255,.72); margin-top:0;">
-        This deployment is positioned as an AI engineering portfolio piece: a lean, product-focused interface
-        showing how the same codebase can run a multi-agent workflow and a simulated execution layer.
-      </p>
       <div class="agent-grid">
         <div class="agent-card"><span class="label">Security Agent</span><span class="value">Identity & validation</span></div>
         <div class="agent-card"><span class="label">Sentiment Agent</span><span class="value">News & market mood</span></div>
@@ -209,9 +210,6 @@ def render_agent_overview_html() -> str:
         <div class="agent-card"><span class="label">Decision Agent</span><span class="value">Strategy selection</span></div>
         <div class="agent-card"><span class="label">Execution Agent</span><span class="value">MCP paper broker</span></div>
         <div class="agent-card"><span class="label">Portfolio Agent</span><span class="value">Final recommendation</span></div>
-      </div>
-      <div style="padding:12px 14px; border-radius:14px; background:rgba(28,160,241,.08); border:1px solid rgba(28,160,241,.18);">
-        <strong>Positioning:</strong> AI engineer building multi-agent systems, orchestration, and reliable tool-driven workflows.
       </div>
     </div>
     """
@@ -376,11 +374,8 @@ def render_home_html() -> str:
     <section class="deploy-hero">
       <div>
         <div class="deploy-pill">AI Engineer</div>
-        <h1>Multi-agent AI systems deployment surface</h1>
-        <p>
-          A single codebase that can launch as Gradio on Hugging Face or as a small FastAPI service for Vercel and personal cloud installs.
-          The visible story is AI engineering: agent orchestration, tool use, and a simulated execution layer.
-        </p>
+        <h1>Multi-agent AI systems</h1>
+        <p>Agent workflow, simulated execution.</p>
       </div>
       <div class="deploy-pill">{runtime_mode()}</div>
     </section>
@@ -534,17 +529,15 @@ def build_gradio_app():
             f"<div style='color:#7ff0ba;'>Position closed: {escape(str(result.get('trade_id', 'OK')))}</div>",
         )
 
-    with gr.Blocks(title=APP_TITLE, css=LEAN_CSS) as demo:
+    with gr.Blocks(title=APP_TITLE, css=LEAN_CSS, theme=gr.themes.Soft()) as demo:
         with gr.Column(elem_id="deploy-root", elem_classes=["deploy-shell"]):
             gr.HTML(
                 f"""
                 <section class="deploy-hero">
                   <div>
                     <div class="deploy-pill">AI Engineer</div>
-                    <h1>Multi-agent AI systems deployment surface</h1>
-                    <p>
-                      A single codebase focused on AI engineering: agent orchestration, simulated execution, and a clean deployment story.
-                    </p>
+                    <h1>Multi-agent AI systems</h1>
+                    <p>Agent workflow, simulated execution.</p>
                   </div>
                   <div class="deploy-pill">{runtime_mode()}</div>
                 </section>
