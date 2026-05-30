@@ -485,7 +485,7 @@ def build_gradio_app():
             f"<div style='color:#7ff0ba;'>Position closed: {escape(str(result.get('trade_id', 'OK')))}</div>",
         )
 
-    with gr.Blocks(title=APP_TITLE) as demo:
+    with gr.Blocks(title=APP_TITLE, css=LEAN_CSS) as demo:
         with gr.Column(elem_id="deploy-root", elem_classes=["deploy-shell"]):
             gr.HTML(
                 f"""
