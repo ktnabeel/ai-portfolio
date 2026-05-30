@@ -11,6 +11,15 @@ from uuid import uuid4
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from market_story import (
+    build_security_decision,
+    fetch_sentiment_snapshot,
+    sentiment_snapshot_from_dict,
+    technical_snapshot_from_dict,
+    render_sentiment_panel,
+    render_technical_panel,
+)
+
 
 APP_TITLE = "Workflow Lab"
 STAGES = ("analyze", "approve", "execute", "done")
@@ -93,6 +102,8 @@ class WorkflowState:
     confidence: float
     thesis: str
     traces: list[TraceCard]
+    sentiment: dict[str, object] = field(default_factory=dict)
+    technical: dict[str, object] = field(default_factory=dict)
     analysis_id: str = field(default_factory=lambda: f"ANL-{uuid4().hex[:8].upper()}")
     approval_note: str = ""
     order_id: str = ""
@@ -107,6 +118,8 @@ class WorkflowState:
                 "confidence": self.confidence,
                 "thesis": self.thesis,
                 "traces": [asdict(t) for t in self.traces],
+                "sentiment": self.sentiment,
+                "technical": self.technical,
                 "analysis_id": self.analysis_id,
                 "approval_note": self.approval_note,
                 "order_id": self.order_id,
@@ -126,6 +139,8 @@ class WorkflowState:
             confidence=float(raw.get("confidence", 0.0)),
             thesis=raw.get("thesis", ""),
             traces=traces,
+            sentiment=dict(raw.get("sentiment", {})),
+            technical=dict(raw.get("technical", {})),
             analysis_id=raw.get("analysis_id", f"ANL-{uuid4().hex[:8].upper()}"),
             approval_note=raw.get("approval_note", ""),
             order_id=raw.get("order_id", ""),
@@ -157,53 +172,56 @@ def _decision_for(symbol: str) -> tuple[str, float, str]:
 
 def _build_analysis(symbol: str) -> WorkflowState:
     symbol = _clean_symbol(symbol)
-    side, confidence, thesis = _decision_for(symbol)
-    score = sum(ord(c) for c in symbol)
-    signal = "positive" if score % 3 == 0 else "mixed" if score % 3 == 1 else "negative"
-    regime = "risk-on" if score % 4 in {0, 1} else "defensive"
+    decision = build_security_decision(symbol)
+    sentiment = decision.sentiment.to_dict() if decision.sentiment else {}
+    technical = decision.technical.to_dict() if decision.technical else {}
+    sentiment_zone = sentiment.get("zone", "Neutral")
+    technical_signal = technical.get("signal", "Mixed / sideways")
     traces = [
         TraceCard(
             title="Security Agent",
             status="complete",
-            summary=f"Validated {symbol} as a reviewable target.",
-            detail="The security gate checked symbol hygiene, policy constraints, and source sanity.",
+            summary=decision.reasons[0] if decision.reasons else f"Validated {symbol} as a reviewable target.",
+            detail=decision.rationale,
             accent="blue",
         ),
         TraceCard(
             title="Risk & Sentiment",
             status="complete",
-            summary=f"Signal read: {signal}.",
-            detail="The sentiment read stitched together synthetic news, momentum tone, and risk pressure.",
+            summary=f"CNN Fear & Greed: {sentiment.get('value', 50)}/100 ({sentiment_zone}).",
+            detail=sentiment.get("description", "Live market sentiment unavailable."),
             accent="teal",
         ),
         TraceCard(
             title="Regime Detection",
             status="complete",
-            summary=f"Macro context is {regime}.",
-            detail="The regime agent filtered the setup through a simple bull, bear, or neutral gate.",
+            summary=f"Technical regime: {technical_signal}.",
+            detail=technical.get("summary", "Price context unavailable."),
             accent="amber",
         ),
         TraceCard(
             title="Options Chain",
             status="complete",
-            summary=f"Contract chain available for {symbol}.",
-            detail="The chain agent surfaced the contract landscape, spreads, and nearby strikes.",
+            summary=f"Decision side: {decision.side} with hybrid confirmation.",
+            detail="The workflow keeps the options leg visible, but the current page focuses on the signal that leads to approval.",
             accent="violet",
         ),
         TraceCard(
             title="Decision Agent",
             status="complete",
-            summary=f"Recommend {side}.",
-            detail=f"Confidence {confidence:.0%}. Thesis: {thesis}.",
+            summary=f"Recommend {decision.side}.",
+            detail=f"Confidence {decision.confidence:.0%}. Thesis: {decision.thesis}.",
             accent="green",
         ),
     ]
     return WorkflowState(
         symbol=symbol,
-        side=side,
-        confidence=confidence,
-        thesis=thesis,
+        side=decision.side,
+        confidence=decision.confidence,
+        thesis=decision.thesis,
         traces=traces,
+        sentiment=sentiment,
+        technical=technical,
     )
 
 
@@ -451,6 +469,37 @@ def _account_snapshot_html() -> str:
     """
 
 
+def _market_context_html(state: WorkflowState | None) -> str:
+    if state and state.sentiment:
+        sentiment = sentiment_snapshot_from_dict(state.sentiment)
+    else:
+        sentiment = fetch_sentiment_snapshot()
+
+    if state and state.technical:
+        technical = technical_snapshot_from_dict(state.technical)
+        decision = build_security_decision(state.symbol, sentiment, technical)
+        technical_panel = render_technical_panel(decision)
+    else:
+        technical_panel = """
+        <section class="panel market-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Security rationale</h2>
+              <div class="panel-sub">Run an analysis to see the EMA and breakout explanation.</div>
+            </div>
+          </div>
+          <div class="hint">The security agent will show whether the stock is above EMA 8 and EMA 21, whether it broke out of the recent range, and how CNN sentiment confirms or conflicts with the chart.</div>
+        </section>
+        """
+
+    return f"""
+    <div class="market-grid">
+      {render_sentiment_panel(sentiment)}
+      {technical_panel}
+    </div>
+    """
+
+
 def _analysis_panel(state: WorkflowState | None, banner: str = "") -> str:
     if state is None:
         prompt = """
@@ -466,7 +515,10 @@ def _analysis_panel(state: WorkflowState | None, banner: str = "") -> str:
           <div class="hint">The approval gate only appears after the agents produce a recommendation.</div>
         </div>
         """
-        return prompt
+        return f"""
+        {_market_context_html(None)}
+        {prompt}
+        """
 
     decision_callout = f"""
     <div class="decision-banner">
@@ -476,6 +528,7 @@ def _analysis_panel(state: WorkflowState | None, banner: str = "") -> str:
     </div>
     """
     return f"""
+    {_market_context_html(state)}
     <div class="panel">
       <div class="panel-head">
         <h2>Decision review</h2>
@@ -493,6 +546,7 @@ def _analysis_panel(state: WorkflowState | None, banner: str = "") -> str:
 
 def _approval_panel(state: WorkflowState, banner: str = "") -> str:
     return f"""
+    {_market_context_html(state)}
     <div class="panel">
       <div class="panel-head">
         <h2>Human approval</h2>
@@ -548,6 +602,7 @@ def _execution_panel(state: WorkflowState, banner: str = "") -> str:
     </form>
     """
     return f"""
+    {_market_context_html(state)}
     <div class="panel">
       <div class="panel-head">
         <h2>Execute</h2>
@@ -900,6 +955,132 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       margin-top: 4px;
       line-height: 1.45;
     }}
+    .market-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }}
+    .market-panel {{
+      min-height: 100%;
+    }}
+    .market-score {{
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+      font-size: 36px;
+      line-height: 1;
+      font-weight: 900;
+      color: var(--ink);
+    }}
+    .market-score span {{
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }}
+    .sentiment-mini-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .sentiment-mini-kpi, .tech-metric {{
+      border: 1px solid rgba(16,24,40,.06);
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+    }}
+    .sentiment-mini-kpi .label, .tech-metric .label {{
+      display:block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }}
+    .sentiment-mini-kpi .value, .tech-metric .value {{
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--ink);
+    }}
+    .driver-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .driver-card {{
+      border-radius: 16px;
+      border: 1px solid rgba(16,24,40,.06);
+      padding: 12px 13px;
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      box-shadow: 0 10px 24px rgba(16,24,40,.04);
+    }}
+    .driver-title {{
+      font-weight: 900;
+      color: var(--ink);
+      margin-bottom: 4px;
+      line-height: 1.25;
+    }}
+    .driver-summary {{
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.45;
+      margin-bottom: 4px;
+    }}
+    .driver-detail {{
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }}
+    .tech-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .tech-chip-row {{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }}
+    .tech-chip {{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: var(--primary-weak);
+      color: var(--primary);
+      border: 1px solid rgba(37,99,235,.14);
+      font-size: 12px;
+      font-weight: 800;
+    }}
+    .decision-pill {{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(37,99,235,.18);
+      background: rgba(37,99,235,.08);
+      color: #2563eb;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }}
+    .reason-list {{
+      margin: 0;
+      padding-left: 18px;
+      color: var(--ink);
+      line-height: 1.55;
+    }}
     .workflow-form {{
       display:grid;
       gap: 10px;
@@ -1133,6 +1314,7 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       flex-wrap: wrap;
     }}
     @media (max-width: 1080px) {{
+      .market-grid {{ grid-template-columns: 1fr; }}
       .workspace {{ grid-template-columns: 1fr; }}
       .stepper {{ grid-template-columns: 1fr; }}
       .hero {{ flex-direction: column; align-items:flex-start; }}

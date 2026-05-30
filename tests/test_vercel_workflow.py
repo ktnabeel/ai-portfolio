@@ -5,6 +5,79 @@ from __future__ import annotations
 import html
 import json
 import re
+import market_story
+from market_story import SentimentDriver, SentimentSnapshot, SecurityDecision, TechnicalSnapshot
+
+
+def _fake_sentiment_snapshot() -> SentimentSnapshot:
+    return SentimentSnapshot(
+        value=67,
+        zone="Greed",
+        description="CNN Fear & Greed sample reading for tests.",
+        previous_close=64,
+        one_week_ago=60,
+        one_month_ago=58,
+        one_year_ago=45,
+        drivers=[
+            SentimentDriver(
+                title="Market momentum",
+                summary="S&P 500 vs its 125-day average",
+                detail="Price above the rolling average signals strength.",
+                accent="blue",
+            )
+        ],
+    )
+
+
+def _fake_technical_snapshot(symbol: str) -> TechnicalSnapshot:
+    return TechnicalSnapshot(
+        symbol=symbol,
+        current_price=200.0,
+        ema_8=195.0,
+        ema_21=188.0,
+        high_20=198.0,
+        low_20=176.0,
+        average_volume_20=1_000_000.0,
+        volume=1_250_000.0,
+        bullish_stack=True,
+        bearish_stack=False,
+        breakout_up=True,
+        breakdown=False,
+        volume_surge=True,
+        signal="Bullish breakout",
+        summary="Price is above EMA 8 and EMA 21 and also cleared the recent range high.",
+        data_points=60,
+    )
+
+
+def _fake_security_decision(
+    symbol: str,
+    sentiment: SentimentSnapshot | None = None,
+    technical: TechnicalSnapshot | None = None,
+) -> SecurityDecision:
+    sentiment = sentiment or _fake_sentiment_snapshot()
+    technical = technical or _fake_technical_snapshot(symbol)
+    reasons = [
+        "Price is above EMA 8 and EMA 21 at $200.00.",
+        "Price broke above the 20-day high, which confirms upside momentum.",
+        "Breakout is backed by heavier-than-average volume.",
+        f"CNN Fear & Greed is {sentiment.value}/100 ({sentiment.zone}), which can support a contrarian long if price confirms.",
+    ]
+    return SecurityDecision(
+        symbol=symbol.upper().strip() or "AAPL",
+        side="BUY",
+        confidence=0.88,
+        thesis="Hybrid signal leans long",
+        rationale=" ".join(reasons),
+        reasons=reasons,
+        sentiment=sentiment,
+        technical=technical,
+    )
+
+
+market_story.fetch_sentiment_snapshot = _fake_sentiment_snapshot
+market_story.fetch_technical_snapshot = _fake_technical_snapshot
+market_story.build_security_decision = _fake_security_decision
 
 from fastapi.testclient import TestClient
 
@@ -25,6 +98,8 @@ def test_homepage_renders_workflow() -> None:
     assert "Agent decisions first. Execution second." in home.text
     assert "Agent Pipeline Flow" in home.text
     assert "Agent Deep Dive" in home.text
+    assert "CNN Fear &amp; Greed" in home.text
+    assert "Security rationale" in home.text
     assert "Human approval" in home.text
 
 
@@ -35,11 +110,15 @@ def test_analysis_approval_and_execution_flow() -> None:
     assert analysis.status_code == 200
     assert "Decision Agent" in analysis.text
     assert "Approve and continue" in analysis.text
+    assert "Price is above EMA 8 and EMA 21" in analysis.text
+    assert "Breakout is backed by heavier-than-average volume" in analysis.text
 
     payload = _extract_payload(analysis.text)
     state = json.loads(payload)
     assert state["symbol"] == "AAPL"
-    assert state["side"] in {"BUY", "SELL"}
+    assert state["side"] == "BUY"
+    assert state["sentiment"]["value"] == 67
+    assert state["technical"]["signal"] == "Bullish breakout"
 
     approval = client.post(
         "/approve",
@@ -53,6 +132,8 @@ def test_analysis_approval_and_execution_flow() -> None:
     assert 'action="/execute"' in approval.text
     assert "Execute trade" in approval.text
     assert "Approval captured" in approval.text
+    assert "CNN Fear &amp; Greed" in approval.text
+    assert "EMA 8" in approval.text
 
     executed = client.post(
         "/execute",
@@ -64,6 +145,7 @@ def test_analysis_approval_and_execution_flow() -> None:
     assert executed.status_code == 200
     assert "Trade executed" in executed.text
     assert "Execution Agent" in executed.text
+    assert "Security rationale" in executed.text
 
     account = client.get("/api/account")
     assert account.status_code == 200

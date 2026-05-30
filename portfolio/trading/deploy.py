@@ -10,6 +10,15 @@ from typing import Any
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from market_story import (
+    build_security_decision,
+    fetch_sentiment_snapshot,
+    render_sentiment_panel,
+    render_technical_panel,
+    sentiment_snapshot_from_dict,
+    technical_snapshot_from_dict,
+)
+
 from .mcp.broker import close_position, get_account, reset_account
 from .mcp.trading_server import MCPTradingServer
 
@@ -87,6 +96,132 @@ footer { display: none !important; }
 .deploy-panel h3 {
   margin-top: 0;
   color: #101828;
+}
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.market-panel {
+  min-height: 100%;
+}
+.market-score {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 900;
+  color: #101828;
+}
+.market-score span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #667085;
+}
+.sentiment-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.sentiment-mini-kpi, .tech-metric {
+  border: 1px solid rgba(16,24,40,.06);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+.sentiment-mini-kpi .label, .tech-metric .label {
+  display:block;
+  font-size: 11px;
+  color: #667085;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 4px;
+}
+.sentiment-mini-kpi .value, .tech-metric .value {
+  font-size: 16px;
+  font-weight: 900;
+  color: #101828;
+}
+.driver-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.driver-card {
+  border-radius: 16px;
+  border: 1px solid rgba(16,24,40,.06);
+  padding: 12px 13px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: 0 10px 24px rgba(16,24,40,.04);
+}
+.driver-title {
+  font-weight: 900;
+  color: #101828;
+  margin-bottom: 4px;
+  line-height: 1.25;
+}
+.driver-summary {
+  font-size: 13px;
+  font-weight: 700;
+  color: #101828;
+  line-height: 1.45;
+  margin-bottom: 4px;
+}
+.driver-detail {
+  font-size: 13px;
+  color: #667085;
+  line-height: 1.5;
+}
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.tech-chip-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.tech-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
+  border: 1px solid rgba(37,99,235,.14);
+  font-size: 12px;
+  font-weight: 800;
+}
+.decision-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(37,99,235,.18);
+  background: rgba(37,99,235,.08);
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.reason-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #101828;
+  line-height: 1.55;
 }
 .pipeline-shell {
   margin-bottom: 18px;
@@ -360,6 +495,9 @@ footer { display: none !important; }
   text-transform: uppercase;
 }
 @media (max-width: 960px) {
+  .market-grid {
+    grid-template-columns: 1fr;
+  }
   .deploy-grid, .deploy-hero {
     grid-template-columns: 1fr;
   }
@@ -377,6 +515,17 @@ def runtime_mode() -> str:
 def _money(value: float) -> str:
     sign = "+" if value >= 0 else ""
     return f"{sign}${value:,.2f}"
+
+
+def render_market_context_html(symbol: str = "AAPL") -> str:
+    sentiment = fetch_sentiment_snapshot()
+    decision = build_security_decision(symbol, sentiment)
+    return f"""
+    <div class="market-grid">
+      {render_sentiment_panel(sentiment)}
+      {render_technical_panel(decision)}
+    </div>
+    """
 
 
 def render_agent_overview_html() -> str:
@@ -463,6 +612,10 @@ def render_agent_overview_html() -> str:
       </div>
     </div>
     """
+
+
+def render_market_story_html(symbol: str = "AAPL") -> str:
+    return render_market_context_html(symbol)
 
 
 def account_snapshot() -> dict[str, Any]:
@@ -634,6 +787,9 @@ def render_home_html() -> str:
       <section class="deploy-panel">
         <h2>Workflow</h2>
         {render_agent_overview_html()}
+        <h3>Live Market Context</h3>
+        <p style="margin-top:-6px; color:#667085; line-height:1.5;">CNN Fear &amp; Greed and the chart read update here so the approval step has a visible market backstop.</p>
+        {render_market_context_html()}
         <h3>Human Review</h3>
         <p style="margin-top:-6px; color:#667085; line-height:1.5;">Use the controls below only after you inspect the agent trace rail. The execution controls remain small on purpose.</p>
         <form class="deploy-form" method="post" action="/api/place-order">
@@ -798,10 +954,14 @@ def build_gradio_app():
             with gr.Row():
                 with gr.Column(scale=1, min_width=340):
                     gr.Markdown("### Workflow")
+                    symbol = gr.Textbox(label="Target", value="AAPL")
                     gr.HTML(render_agent_overview_html())
 
+                    gr.Markdown("### Live Market Context")
+                    market_output = gr.HTML(render_market_context_html())
+                    refresh_market_btn = gr.Button("Refresh Market Story")
+
                     gr.Markdown("### Human Review")
-                    symbol = gr.Textbox(label="Target", value="AAPL")
                     strategy = gr.Dropdown(["Plan A", "Plan B", "Plan C", "No Run"], value="Plan A", label="Plan")
                     option_type = gr.Dropdown(["call", "put"], value="call", label="Variant")
                     strike = gr.Textbox(label="Reference", value="150")
@@ -826,6 +986,11 @@ def build_gradio_app():
                 fn=_place_order,
                 inputs=[symbol, strategy, option_type, strike, expiration, quantity, limit_price],
                 outputs=[account_output, action_status],
+            )
+            refresh_market_btn.click(
+                fn=render_market_context_html,
+                inputs=[symbol],
+                outputs=[market_output],
             )
             close_btn.click(
                 fn=_close,
