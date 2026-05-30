@@ -35,3 +35,6 @@ pythonpath = ["."]
 
 [tool.vercel]
 entrypoint = "app_deploy:app"
+
+[project.scripts]
+app = "app_deploy:app"
