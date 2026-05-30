@@ -1,0 +1,535 @@
+"""Shared deployment helpers for the lean Trading Agent app."""
+
+from __future__ import annotations
+
+import os
+from datetime import datetime, timezone
+from html import escape
+from typing import Any
+
+import gradio as gr
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from .mcp.broker import close_position, get_account, reset_account
+from .mcp.trading_server import MCPTradingServer
+from .ui import TRADING_CSS, render_trading_tab
+
+
+APP_TITLE = "Lean Trading Agent Deployment"
+
+LEAN_CSS = """
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top left, rgba(28,160,241,.18), transparent 32%),
+    radial-gradient(circle at top right, rgba(55,199,138,.14), transparent 24%),
+    linear-gradient(180deg, #0e1623 0%, #121a28 36%, #0b111c 100%);
+  color: rgba(255,255,255,.92);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+footer { display: none !important; }
+.deploy-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 18px 40px;
+}
+.deploy-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding: 22px 24px;
+  margin-bottom: 18px;
+  background: rgba(9, 14, 23, .64);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  box-shadow: 0 20px 56px rgba(0,0,0,.24);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+.deploy-hero h1 {
+  margin: 0 0 6px;
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.04;
+}
+.deploy-hero p {
+  margin: 0;
+  max-width: 80ch;
+  color: rgba(255,255,255,.72);
+}
+.deploy-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(55,199,138,.26);
+  background: rgba(55,199,138,.12);
+  color: #7ff0ba;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.deploy-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+}
+.deploy-panel {
+  padding: 18px;
+  background: rgba(10, 16, 26, .78);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(0,0,0,.22);
+}
+.deploy-panel h2,
+.deploy-panel h3 {
+  margin-top: 0;
+}
+.deploy-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.deploy-kpi {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.deploy-kpi .label {
+  display: block;
+  color: rgba(255,255,255,.65);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.deploy-kpi .value {
+  font-size: 18px;
+  font-weight: 800;
+}
+.deploy-form {
+  display: grid;
+  gap: 10px;
+}
+.deploy-form input,
+.deploy-form select,
+.deploy-form button,
+.deploy-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.92);
+  padding: 10px 12px;
+}
+.deploy-form button {
+  cursor: pointer;
+  font-weight: 800;
+  background: linear-gradient(135deg, rgba(28,160,241,.9), rgba(55,199,138,.9));
+  border-color: transparent;
+}
+.deploy-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.deploy-table th,
+.deploy-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  vertical-align: top;
+  text-align: left;
+}
+.deploy-table th {
+  color: rgba(255,255,255,.65);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+@media (max-width: 960px) {
+  .deploy-grid, .deploy-hero {
+    grid-template-columns: 1fr;
+  }
+}
+"""
+
+
+def runtime_mode() -> str:
+    mode = os.getenv("TRADING_DEPLOY_RUNTIME", "").strip().lower()
+    if mode in {"gradio", "fastapi"}:
+        return mode
+    return "fastapi" if os.getenv("VERCEL") else "gradio"
+
+
+def _money(value: float) -> str:
+    sign = "+" if value >= 0 else ""
+    return f"{sign}${value:,.2f}"
+
+
+def account_snapshot() -> dict[str, Any]:
+    account = get_account()
+    return {
+        "cash": round(account.cash, 2),
+        "total_equity": round(account.total_equity, 2),
+        "total_pnl": round(account.total_pnl, 2),
+        "realized_pnl": round(account.realized_pnl, 2),
+        "unrealized_pnl": round(account.unrealized_pnl, 2),
+        "total_commission": round(account.total_commission, 2),
+        "position_count": len(account.positions),
+        "order_count": len(account.order_history),
+        "positions": [
+            {
+                "position_id": p.position_id,
+                "symbol": p.symbol,
+                "strategy": p.strategy,
+                "option_type": p.option_type,
+                "strike": p.strike,
+                "expiration": p.expiration,
+                "quantity": p.quantity,
+                "entry_price": round(p.entry_price, 2),
+                "market_value": round(p.market_value, 2),
+                "unrealized_pnl": round(p.unrealized_pnl, 2),
+            }
+            for p in account.positions
+        ],
+        "order_history": [
+            {
+                "order_id": o.order_id,
+                "status": o.status.value if hasattr(o.status, "value") else str(o.status),
+                "filled_price": round(o.filled_price, 2) if o.filled_price is not None else None,
+                "filled_quantity": o.filled_quantity,
+                "commission": round(o.commission, 2),
+                "total_cost": round(o.total_cost, 2) if o.total_cost is not None else None,
+                "timestamp": o.timestamp.isoformat() if o.timestamp else None,
+                "notes": o.notes,
+            }
+            for o in reversed(account.order_history[-15:])
+        ],
+        "rejections": [
+            {
+                "rejection_id": r.rejection_id,
+                "symbol": r.symbol,
+                "strategy": r.strategy,
+                "reason": r.reason,
+                "rejected_at": r.rejected_at.isoformat(),
+                "notes": r.notes,
+            }
+            for r in reversed(account.rejection_history[-15:])
+        ],
+    }
+
+
+def render_account_summary_html() -> str:
+    account = get_account()
+    positions_rows = ""
+    for pos in account.positions:
+        positions_rows += f"""
+        <tr>
+            <td>{escape(pos.symbol)}</td>
+            <td>{escape(pos.strategy)}</td>
+            <td>{escape(pos.option_type)}</td>
+            <td>${pos.strike:,.2f}</td>
+            <td>{escape(pos.expiration[:10] if pos.expiration else "-")}</td>
+            <td>{pos.quantity}</td>
+            <td>${pos.entry_price:,.2f}</td>
+            <td style="color:{'#7ff0ba' if pos.unrealized_pnl >= 0 else '#ff8e80'}">{_money(pos.unrealized_pnl)}</td>
+        </tr>
+        """
+
+    if not positions_rows:
+        positions_rows = '<tr><td colspan="8" style="color:rgba(255,255,255,.6); font-style:italic;">No open positions.</td></tr>'
+
+    orders_rows = ""
+    for order in account.order_history[-10:][::-1]:
+        orders_rows += f"""
+        <tr>
+            <td>{escape(order.order_id)}</td>
+            <td>{escape(order.status.value if hasattr(order.status, "value") else str(order.status))}</td>
+            <td>{order.filled_quantity}</td>
+            <td>{'' if order.filled_price is None else f'${order.filled_price:,.2f}'}</td>
+            <td>{'' if order.total_cost is None else f'${order.total_cost:,.2f}'}</td>
+            <td>{escape(order.notes or '')}</td>
+        </tr>
+        """
+    if not orders_rows:
+        orders_rows = '<tr><td colspan="6" style="color:rgba(255,255,255,.6); font-style:italic;">No orders yet.</td></tr>'
+
+    rejections_rows = ""
+    for rejection in account.rejection_history[-10:][::-1]:
+        rejections_rows += f"""
+        <tr>
+            <td>{escape(rejection.rejected_at.strftime("%m/%d %H:%M"))}</td>
+            <td>{escape(rejection.symbol)}</td>
+            <td>{escape(rejection.strategy)}</td>
+            <td>{escape(rejection.reason)}</td>
+        </tr>
+        """
+    if not rejections_rows:
+        rejections_rows = '<tr><td colspan="4" style="color:rgba(255,255,255,.6); font-style:italic;">No rejections yet.</td></tr>'
+
+    return f"""
+    <div class="deploy-panel">
+      <h2>Account Snapshot</h2>
+      <div class="deploy-kpi-grid">
+        <div class="deploy-kpi"><span class="label">Cash</span><span class="value">{_money(account.cash)}</span></div>
+        <div class="deploy-kpi"><span class="label">Total Equity</span><span class="value">{_money(account.total_equity)}</span></div>
+        <div class="deploy-kpi"><span class="label">Total P&amp;L</span><span class="value">{_money(account.total_pnl)}</span></div>
+        <div class="deploy-kpi"><span class="label">Positions</span><span class="value">{len(account.positions)}</span></div>
+      </div>
+
+      <h3>Open Positions</h3>
+      <div style="overflow:auto; margin-bottom:18px;">
+        <table class="deploy-table">
+          <thead>
+            <tr><th>Symbol</th><th>Strategy</th><th>Type</th><th>Strike</th><th>Expiry</th><th>Qty</th><th>Entry</th><th>P&amp;L</th></tr>
+          </thead>
+          <tbody>{positions_rows}</tbody>
+        </table>
+      </div>
+
+      <h3>Recent Orders</h3>
+      <div style="overflow:auto; margin-bottom:18px;">
+        <table class="deploy-table">
+          <thead>
+            <tr><th>Order</th><th>Status</th><th>Qty</th><th>Fill</th><th>Total</th><th>Notes</th></tr>
+          </thead>
+          <tbody>{orders_rows}</tbody>
+        </table>
+      </div>
+
+      <h3>Recent Rejections</h3>
+      <div style="overflow:auto;">
+        <table class="deploy-table">
+          <thead>
+            <tr><th>Time</th><th>Symbol</th><th>Strategy</th><th>Reason</th></tr>
+          </thead>
+          <tbody>{rejections_rows}</tbody>
+        </table>
+      </div>
+    </div>
+    """
+
+
+def render_home_html() -> str:
+    account_html = render_account_summary_html()
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{APP_TITLE}</title>
+  <style>{LEAN_CSS}</style>
+</head>
+<body>
+  <div class="deploy-shell">
+    <section class="deploy-hero">
+      <div>
+        <div class="deploy-pill">Lean deployment</div>
+        <h1>Trading Agent deployment surface</h1>
+        <p>
+          A single codebase that can launch as Gradio on Hugging Face or as a small FastAPI service for Vercel and personal cloud installs.
+          The account, order, close, and reset actions stay backed by the same MCP paper broker.
+        </p>
+      </div>
+      <div class="deploy-pill">{runtime_mode()}</div>
+    </section>
+
+    <div class="deploy-grid">
+      <section class="deploy-panel">
+        <h2>Trade Controls</h2>
+        <form class="deploy-form" method="post" action="/api/place-order">
+          <input name="symbol" placeholder="Symbol, e.g. AAPL" value="AAPL" />
+          <select name="strategy">
+            <option>Call</option>
+            <option>Put</option>
+            <option>Strangle</option>
+            <option>No Trade</option>
+          </select>
+          <input name="option_type" placeholder="Option type, e.g. call" value="call" />
+          <input name="strike" placeholder="Strike" type="number" step="0.01" value="150" />
+          <input name="expiration" placeholder="Expiration YYYY-MM-DD" value="" />
+          <input name="quantity" placeholder="Quantity" type="number" step="1" value="1" />
+          <input name="limit_price" placeholder="Limit price" type="number" step="0.01" value="" />
+          <button type="submit">Place Paper Order</button>
+        </form>
+
+        <div style="margin-top:18px;">
+          <form class="deploy-form" method="post" action="/api/reset">
+            <button type="submit" style="background: rgba(255,255,255,.08);">Reset Account</button>
+          </form>
+        </div>
+
+        <div style="margin-top:18px;">
+          <form class="deploy-form" method="post" action="/api/close">
+            <input name="position_id" placeholder="Position ID to close" />
+            <input name="exit_price" placeholder="Exit price (optional)" type="number" step="0.01" />
+            <button type="submit" style="background: rgba(255,255,255,.08);">Close Position</button>
+          </form>
+        </div>
+      </section>
+      <section>
+        {account_html}
+      </section>
+    </div>
+  </div>
+</body>
+</html>"""
+
+
+def _mcp_server() -> MCPTradingServer:
+    return MCPTradingServer()
+
+
+def place_order_via_mcp(
+    symbol: str,
+    strategy: str,
+    option_type: str = "",
+    strike: float | None = None,
+    expiration: str = "",
+    quantity: int = 1,
+    limit_price: float | None = None,
+) -> dict[str, Any]:
+    server = _mcp_server()
+    response = server.call_tool("place_option_order", {
+        "symbol": symbol,
+        "strategy": strategy,
+        "option_type": option_type,
+        "strike": strike,
+        "expiration": expiration,
+        "quantity": quantity,
+        "limit_price": limit_price,
+    })
+    if response.success:
+        return response.data
+    return {"success": False, "error": response.error}
+
+
+def reset_via_mcp() -> dict[str, Any]:
+    server = _mcp_server()
+    response = server.call_tool("reset_account", {})
+    return response.data if response.success else {"success": False, "error": response.error}
+
+
+def close_via_mcp(position_id: str, exit_price: float | None = None) -> dict[str, Any]:
+    server = _mcp_server()
+    response = server.call_tool("close_position", {
+        "position_id": position_id,
+        "exit_price": exit_price,
+    })
+    return response.data if response.success else {"success": False, "error": response.error}
+
+
+def _blank_to_none(value: str | None) -> float | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    return float(text)
+
+
+def build_gradio_app() -> gr.Blocks:
+    with gr.Blocks(title=APP_TITLE) as demo:
+        with gr.Column(elem_id="deploy-root", elem_classes=["deploy-shell"]):
+            gr.HTML(
+                f"""
+                <section class="deploy-hero">
+                  <div>
+                    <div class="deploy-pill">Lean deployment</div>
+                    <h1>Trading Agent deployment surface</h1>
+                    <p>
+                      Single-entry deployment for Hugging Face Spaces. It keeps the Trading Desk intact and avoids booting the portfolio tabs.
+                    </p>
+                  </div>
+                  <div class="deploy-pill">{runtime_mode()}</div>
+                </section>
+                """
+            )
+            render_trading_tab()
+    return demo
+
+
+def create_fastapi_app() -> FastAPI:
+    app = FastAPI(
+        title=APP_TITLE,
+        description="Lean Trading Agent deployment with MCP-backed simulated broker actions.",
+        version="0.1.0",
+    )
+
+    @app.get("/", response_class=HTMLResponse)
+    async def index(_: Request) -> HTMLResponse:
+        return HTMLResponse(render_home_html())
+
+    @app.get("/health")
+    async def health() -> dict[str, Any]:
+        return {
+            "status": "healthy",
+            "runtime": "fastapi",
+            "mode": runtime_mode(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    @app.get("/api/account")
+    async def api_account() -> dict[str, Any]:
+        return account_snapshot()
+
+    @app.get("/api/orders")
+    async def api_orders(limit: int = 15) -> dict[str, Any]:
+        snapshot = account_snapshot()
+        orders = snapshot["order_history"][:limit]
+        return {"orders": orders, "total_orders": len(snapshot["order_history"])}
+
+    @app.post("/api/place-order", response_model=None)
+    async def api_place_order(
+        symbol: str = Form(default="AAPL"),
+        strategy: str = Form(default="Call"),
+        option_type: str = Form(default="call"),
+        strike: str | None = Form(default=""),
+        expiration: str = Form(default=""),
+        quantity: int = Form(default=1),
+        limit_price: str | None = Form(default=""),
+    ) -> HTMLResponse | JSONResponse:
+        result = place_order_via_mcp(
+            symbol,
+            strategy,
+            option_type,
+            _blank_to_none(strike),
+            expiration,
+            quantity,
+            _blank_to_none(limit_price),
+        )
+        if not result.get("success", True):
+            return JSONResponse(status_code=400, content=result)
+        return HTMLResponse(render_home_html())
+
+    @app.post("/api/reset")
+    async def api_reset() -> HTMLResponse:
+        reset_via_mcp()
+        return HTMLResponse(render_home_html())
+
+    @app.post("/api/close", response_model=None)
+    async def api_close(
+        position_id: str = Form(default=""),
+        exit_price: str | None = Form(default=""),
+    ) -> HTMLResponse | JSONResponse:
+        if not position_id.strip():
+            return JSONResponse(status_code=400, content={"success": False, "error": "position_id is required"})
+        result = close_via_mcp(position_id.strip(), _blank_to_none(exit_price))
+        if not result.get("success", True):
+            return JSONResponse(status_code=400, content=result)
+        return HTMLResponse(render_home_html())
+
+    return app
+
+
+def build_runtime_app() -> tuple[str, Any]:
+    mode = runtime_mode()
+    if mode == "fastapi":
+        return mode, create_fastapi_app()
+    return mode, build_gradio_app()
