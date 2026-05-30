@@ -14,7 +14,7 @@ from .mcp.broker import close_position, get_account, reset_account
 from .mcp.trading_server import MCPTradingServer
 
 
-APP_TITLE = "Lean Trading Agent Deployment"
+APP_TITLE = "AI Engineer Deployment"
 
 LEAN_CSS = """
 html, body {
@@ -85,6 +85,30 @@ footer { display: none !important; }
 .deploy-panel h2,
 .deploy-panel h3 {
   margin-top: 0;
+}
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+.agent-card {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.agent-card .label {
+  display: block;
+  color: rgba(255,255,255,.65);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.agent-card .value {
+  font-size: 15px;
+  font-weight: 800;
 }
 .deploy-kpi-grid {
   display: grid;
@@ -168,6 +192,29 @@ def runtime_mode() -> str:
 def _money(value: float) -> str:
     sign = "+" if value >= 0 else ""
     return f"{sign}${value:,.2f}"
+
+
+def render_agent_overview_html() -> str:
+    return """
+    <div class="deploy-panel">
+      <h2>AI Engineer Overview</h2>
+      <p style="color:rgba(255,255,255,.72); margin-top:0;">
+        This deployment is positioned as an AI engineering portfolio piece: a lean, product-focused interface
+        showing how the same codebase can run a multi-agent workflow and a simulated execution layer.
+      </p>
+      <div class="agent-grid">
+        <div class="agent-card"><span class="label">Security Agent</span><span class="value">Identity & validation</span></div>
+        <div class="agent-card"><span class="label">Sentiment Agent</span><span class="value">News & market mood</span></div>
+        <div class="agent-card"><span class="label">Regime Agent</span><span class="value">Bull / Bear / Neutral</span></div>
+        <div class="agent-card"><span class="label">Decision Agent</span><span class="value">Strategy selection</span></div>
+        <div class="agent-card"><span class="label">Execution Agent</span><span class="value">MCP paper broker</span></div>
+        <div class="agent-card"><span class="label">Portfolio Agent</span><span class="value">Final recommendation</span></div>
+      </div>
+      <div style="padding:12px 14px; border-radius:14px; background:rgba(28,160,241,.08); border:1px solid rgba(28,160,241,.18);">
+        <strong>Positioning:</strong> AI engineer building multi-agent systems, orchestration, and reliable tool-driven workflows.
+      </div>
+    </div>
+    """
 
 
 def account_snapshot() -> dict[str, Any]:
@@ -328,11 +375,11 @@ def render_home_html() -> str:
   <div class="deploy-shell">
     <section class="deploy-hero">
       <div>
-        <div class="deploy-pill">Lean deployment</div>
-        <h1>Trading Agent deployment surface</h1>
+        <div class="deploy-pill">AI Engineer</div>
+        <h1>Multi-agent AI systems deployment surface</h1>
         <p>
           A single codebase that can launch as Gradio on Hugging Face or as a small FastAPI service for Vercel and personal cloud installs.
-          The account, order, close, and reset actions stay backed by the same MCP paper broker.
+          The visible story is AI engineering: agent orchestration, tool use, and a simulated execution layer.
         </p>
       </div>
       <div class="deploy-pill">{runtime_mode()}</div>
@@ -340,7 +387,9 @@ def render_home_html() -> str:
 
     <div class="deploy-grid">
       <section class="deploy-panel">
-        <h2>Trade Controls</h2>
+        <h2>Multi-Agent System</h2>
+        {render_agent_overview_html()}
+        <h3>Execution Console</h3>
         <form class="deploy-form" method="post" action="/api/place-order">
           <input name="symbol" placeholder="Symbol, e.g. AAPL" value="AAPL" />
           <select name="strategy">
@@ -359,7 +408,7 @@ def render_home_html() -> str:
 
         <div style="margin-top:18px;">
           <form class="deploy-form" method="post" action="/api/reset">
-            <button type="submit" style="background: rgba(255,255,255,.08);">Reset Account</button>
+            <button type="submit" style="background: rgba(255,255,255,.08);">Reset Simulation</button>
           </form>
         </div>
 
@@ -367,7 +416,7 @@ def render_home_html() -> str:
           <form class="deploy-form" method="post" action="/api/close">
             <input name="position_id" placeholder="Position ID to close" />
             <input name="exit_price" placeholder="Exit price (optional)" type="number" step="0.01" />
-            <button type="submit" style="background: rgba(255,255,255,.08);">Close Position</button>
+            <button type="submit" style="background: rgba(255,255,255,.08);">Close Simulation Position</button>
           </form>
         </div>
       </section>
@@ -491,11 +540,10 @@ def build_gradio_app():
                 f"""
                 <section class="deploy-hero">
                   <div>
-                    <div class="deploy-pill">Lean deployment</div>
-                    <h1>Trading Agent deployment surface</h1>
+                    <div class="deploy-pill">AI Engineer</div>
+                    <h1>Multi-agent AI systems deployment surface</h1>
                     <p>
-                      A single trading-focused app backed by the same simulated broker, with account status, order placement,
-                      order history, close, and reset flows.
+                      A single codebase focused on AI engineering: agent orchestration, simulated execution, and a clean deployment story.
                     </p>
                   </div>
                   <div class="deploy-pill">{runtime_mode()}</div>
@@ -505,7 +553,10 @@ def build_gradio_app():
 
             with gr.Row():
                 with gr.Column(scale=1, min_width=340):
-                    gr.Markdown("### Trade")
+                    gr.Markdown("### Multi-Agent Console")
+                    gr.HTML(render_agent_overview_html())
+
+                    gr.Markdown("### Simulation Controls")
                     symbol = gr.Textbox(label="Symbol", value="AAPL")
                     strategy = gr.Dropdown(["Call", "Put", "Strangle", "No Trade"], value="Call", label="Strategy")
                     option_type = gr.Dropdown(["call", "put"], value="call", label="Option Type")
@@ -520,12 +571,12 @@ def build_gradio_app():
                     exit_price = gr.Textbox(label="Exit Price", placeholder="Optional")
                     close_btn = gr.Button("Close Position")
 
-                    reset_btn = gr.Button("Reset Account")
+                    reset_btn = gr.Button("Reset Simulation")
                     action_status = gr.HTML("")
 
                 with gr.Column(scale=2, min_width=500):
                     account_output = gr.HTML(render_account_summary_html())
-                    refresh_btn = gr.Button("Refresh Account")
+                    refresh_btn = gr.Button("Refresh Simulation")
 
             place_btn.click(
                 fn=_place_order,
