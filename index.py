@@ -22,14 +22,14 @@ from market_story import (
 
 
 APP_TITLE = "Workflow Lab"
-STAGES = ("analyze", "approve", "execute", "done")
+STAGES = ("analyze", "review", "execute", "done")
 PIPELINE_STEPS = (
-    ("Security Agent", "Validate the target and policy gate.", "🔎", "blue"),
-    ("Risk & Sentiment", "Fuse mood, news, and noise into one read.", "🧭", "teal"),
-    ("Regime Detection", "Classify the market context.", "🔁", "amber"),
-    ("Options Chain", "Fetch the contract landscape.", "📊", "violet"),
-    ("Decision Agent", "Select buy or sell and explain the thesis.", "🎯", "green"),
-    ("Execution Agent", "Route the simulated trade after review.", "💸", "slate"),
+    ("Security Agent", "Validate the target and technical setup.", "S", "blue"),
+    ("Risk & Sentiment", "Fuse CNN Fear & Greed and risk context.", "R", "teal"),
+    ("Regime Detection", "Classify EMA 8/21, range, and volume.", "G", "amber"),
+    ("Options Chain", "Keep the contract landscape available.", "O", "violet"),
+    ("Decision Agent", "Select buy or sell and explain the thesis.", "D", "green"),
+    ("Execution Agent", "Route the simulated trade after review.", "E", "slate"),
 )
 
 
@@ -106,6 +106,7 @@ class WorkflowState:
     technical: dict[str, object] = field(default_factory=dict)
     analysis_id: str = field(default_factory=lambda: f"ANL-{uuid4().hex[:8].upper()}")
     approval_note: str = ""
+    review_status: str = ""
     order_id: str = ""
     order_status: str = ""
     execution_note: str = ""
@@ -122,6 +123,7 @@ class WorkflowState:
                 "technical": self.technical,
                 "analysis_id": self.analysis_id,
                 "approval_note": self.approval_note,
+                "review_status": self.review_status,
                 "order_id": self.order_id,
                 "order_status": self.order_status,
                 "execution_note": self.execution_note,
@@ -143,6 +145,7 @@ class WorkflowState:
             technical=dict(raw.get("technical", {})),
             analysis_id=raw.get("analysis_id", f"ANL-{uuid4().hex[:8].upper()}"),
             approval_note=raw.get("approval_note", ""),
+            review_status=raw.get("review_status", ""),
             order_id=raw.get("order_id", ""),
             order_status=raw.get("order_status", ""),
             execution_note=raw.get("execution_note", ""),
@@ -189,14 +192,14 @@ def _build_analysis(symbol: str) -> WorkflowState:
             title="Risk & Sentiment",
             status="complete",
             summary=f"CNN Fear & Greed: {sentiment.get('value', 50)}/100 ({sentiment_zone}).",
-            detail=sentiment.get("description", "Live market sentiment unavailable."),
+            detail=_sentiment_trace_detail(sentiment),
             accent="teal",
         ),
         TraceCard(
             title="Regime Detection",
             status="complete",
             summary=f"Technical regime: {technical_signal}.",
-            detail=technical.get("summary", "Price context unavailable."),
+            detail=_technical_trace_detail(technical),
             accent="amber",
         ),
         TraceCard(
@@ -210,7 +213,10 @@ def _build_analysis(symbol: str) -> WorkflowState:
             title="Decision Agent",
             status="complete",
             summary=f"Recommend {decision.side}.",
-            detail=f"Confidence {decision.confidence:.0%}. Thesis: {decision.thesis}.",
+            detail=(
+                f"Confidence {decision.confidence:.0%}. Thesis: {decision.thesis}. "
+                f"EMA 8/21 and breakout rationale: {decision.rationale}"
+            ),
             accent="green",
         ),
     ]
@@ -282,49 +288,88 @@ def _execute_trade(state: WorkflowState) -> WorkflowState:
     return state
 
 
-def _fmt_step(stage: str, idx: int, label: str) -> str:
-    stages = {"analyze": 0, "approve": 1, "execute": 2, "done": 2}
-    current = stages.get(stage, 0)
-    cls = "done" if idx < current else "active" if idx == current else "pending"
-    badge = "✓" if cls == "done" else str(idx + 1)
-    return f"""
-    <div class="step {cls}">
-      <span class="step-badge">{badge}</span>
-      <span class="step-label">{escape(label)}</span>
-    </div>"""
+def _sentiment_trace_detail(sentiment: dict[str, object]) -> str:
+    if not sentiment:
+        return "CNN Fear & Greed unavailable; the agent uses a neutral fallback."
+    comparisons = [
+        ("previous close", sentiment.get("previous_close")),
+        ("one week ago", sentiment.get("one_week_ago")),
+        ("one month ago", sentiment.get("one_month_ago")),
+        ("one year ago", sentiment.get("one_year_ago")),
+    ]
+    comparison_text = ", ".join(f"{label}: {value}" for label, value in comparisons if value is not None)
+    drivers = []
+    for driver in sentiment.get("drivers", []) or []:
+        if isinstance(driver, dict):
+            drivers.append(f"{driver.get('title', 'Driver')}: {driver.get('summary', '')} {driver.get('detail', '')}".strip())
+    driver_text = " | Drivers: " + " ; ".join(drivers) if drivers else ""
+    return (
+        f"CNN Fear & Greed score {sentiment.get('value', 50)}/100 in the {sentiment.get('zone', 'Neutral')} zone. "
+        f"{sentiment.get('description', '')} Comparisons: {comparison_text or 'not available'}.{driver_text}"
+    )
 
 
-def _render_stepper(stage: str) -> str:
-    labels = ["Analyze", "Human approval", "Execute"]
-    items = "".join(_fmt_step(stage, idx, label) for idx, label in enumerate(labels))
-    return f"""
-    <div class="stepper">
-      {items}
-    </div>"""
+def _technical_trace_detail(technical: dict[str, object]) -> str:
+    if not technical:
+        return "EMA 8/21 and breakout data unavailable; the agent holds a neutral technical read."
+    flags = []
+    if technical.get("bullish_stack"):
+        flags.append("price is above EMA 8 and EMA 21")
+    if technical.get("bearish_stack"):
+        flags.append("price is below EMA 8 and EMA 21")
+    if technical.get("breakout_up"):
+        flags.append("breakout above the 20-day high")
+    if technical.get("breakdown"):
+        flags.append("breakdown below the 20-day low")
+    if technical.get("volume_surge"):
+        flags.append("volume confirmation is present")
+    return (
+        f"EMA 8/21: EMA 8 ${float(technical.get('ema_8', 0.0)):.2f}, "
+        f"EMA 21 ${float(technical.get('ema_21', 0.0)):.2f}, current price ${float(technical.get('current_price', 0.0)):.2f}. "
+        f"Breakout rationale: {technical.get('summary', 'No range summary available')} "
+        f"Signals: {', '.join(flags) if flags else 'mixed trend with no confirmed breakout'}."
+    )
 
 
-def _pipeline_status(stage: str, index: int) -> str:
-    stage_map = {"analyze": 0, "approve": 4, "execute": 5, "done": 5}
-    current = stage_map.get(stage, 0)
-    if index < current:
-        return "complete"
-    if index == current:
-        return "running" if stage != "approve" else "awaiting"
-    return "pending"
+def _pipeline_status(stage: str, index: int, title: str, state: WorkflowState | None) -> str:
+    if state is None:
+        return "running" if index == 0 else "pending"
+    if title == "Execution Agent":
+        if state.order_id:
+            return "complete"
+        if state.review_status == "approved":
+            return "running"
+        return "pending"
+    return "complete"
 
 
 def _pipeline_html(stage: str, state: WorkflowState | None) -> str:
     trace_by_title = {trace.title: trace for trace in (state.traces if state else [])}
+    steps = list(PIPELINE_STEPS)
+    if state is not None:
+        steps.insert(5, ("Human Review", "Approve or reject the recommendation.", "H", "amber"))
     cards = []
-    for idx, (title, subtitle, icon, accent) in enumerate(PIPELINE_STEPS):
+    for idx, (title, subtitle, icon, accent) in enumerate(steps):
         trace = trace_by_title.get(title)
-        status = _pipeline_status(stage, idx)
-        status_label = "Awaiting Approval" if status == "awaiting" else status.replace("_", " ").title()
+        status = "pending"
         summary = trace.summary if trace else subtitle
         detail = trace.detail if trace else subtitle
+        if title == "Human Review":
+            if state.review_status == "approved":
+                status, summary, detail = "complete", "Approved", state.approval_note or "Human review approved the recommendation."
+            elif state.review_status == "rejected":
+                status, summary, detail = "rejected", "Rejected", state.approval_note or "Human review rejected the recommendation."
+            else:
+                status, summary, detail = "awaiting", "Awaiting Approval", "Human review is required before the Execution Agent can expand."
+        else:
+            status = _pipeline_status(stage, idx, title, state)
+        status_label = {
+            "awaiting": "Awaiting Approval",
+            "rejected": "Rejected",
+        }.get(status, status.replace("_", " ").title())
         cards.append(
             f"""
-            <article class="pipeline-card {status}">
+            <article class="pipeline-card {status}" id="node-{idx}">
               <div class="pipeline-icon" data-accent="{accent}">{icon}</div>
               <div class="pipeline-name">{escape(title)}</div>
               <div class="pipeline-summary">{escape(summary)}</div>
@@ -338,8 +383,7 @@ def _pipeline_html(stage: str, state: WorkflowState | None) -> str:
       <div class="pipeline-head">
         <div>
           <div class="eyebrow">Agent Pipeline Flow</div>
-          <div class="pipeline-title">LangGraph-style orchestration with human review</div>
-          <div class="pipeline-copy">The emphasis is on the agents making the call, exposing their traces, and allowing you to inspect each decision before anything executes.</div>
+          <div class="pipeline-title">Inspectable agent graph</div>
         </div>
       </div>
       <div class="pipeline-grid">
@@ -349,6 +393,7 @@ def _pipeline_html(stage: str, state: WorkflowState | None) -> str:
         <span><i class="legend-dot complete"></i>Complete</span>
         <span><i class="legend-dot running"></i>Running</span>
         <span><i class="legend-dot review"></i>Awaiting approval</span>
+        <span><i class="legend-dot rejected"></i>Rejected</span>
         <span><i class="legend-dot pending"></i>Pending</span>
       </div>
     </section>
@@ -469,6 +514,116 @@ def _account_snapshot_html() -> str:
     """
 
 
+def _agent_output_html(state: WorkflowState | None, banner: str = "") -> str:
+    if state is None:
+        return """
+        <section class="panel agent-output" id="agent-output">
+          <div class="panel-head">
+            <div>
+              <h2>Agent Output</h2>
+              <div class="panel-sub">Select a node after analysis to inspect its inputs, traces, and outputs.</div>
+            </div>
+          </div>
+          <div class="empty-output">
+            <div class="empty-icon">A</div>
+            <div class="empty-title">Agent outputs will appear here after analysis.</div>
+          </div>
+        </section>
+        """
+
+    trace_by_title = {trace.title: trace for trace in state.traces}
+    selected = trace_by_title.get("Execution Agent" if state.order_id else "Decision Agent")
+    if selected is None:
+        selected = state.traces[-1] if state.traces else TraceCard("Decision Agent", "pending", "Pending", "Waiting for analysis.")
+
+    sentiment = sentiment_snapshot_from_dict(state.sentiment) if state.sentiment else None
+    technical = technical_snapshot_from_dict(state.technical) if state.technical else None
+    sentiment_html = render_sentiment_panel(sentiment) if sentiment else ""
+    technical_html = render_technical_panel(build_security_decision(state.symbol, sentiment, technical)) if sentiment and technical else ""
+
+    review_html = ""
+    if not state.review_status:
+        review_html = f"""
+        <form class="workflow-form compact-form" method="post" action="/approve">
+          <input type="hidden" name="payload" value="{escape(state.to_payload())}" />
+          <textarea name="approval_note" rows="2" placeholder="Approval note or rejection rationale"></textarea>
+          <div class="button-row">
+            <button type="submit" name="approval" value="approve">Approve</button>
+            <button type="submit" name="approval" value="reject" class="secondary">Reject</button>
+          </div>
+        </form>
+        """
+    elif state.review_status == "approved" and not state.order_id:
+        review_html = f"""
+        <form class="workflow-form compact-form" method="post" action="/execute">
+          <input type="hidden" name="payload" value="{escape(state.to_payload())}" />
+          <button type="submit">Execute trade</button>
+        </form>
+        """
+    elif state.review_status == "rejected":
+        review_html = """
+        <form class="workflow-form compact-form" method="get" action="/">
+          <button type="submit" class="secondary">Analyze another target</button>
+        </form>
+        """
+
+    execution_summary = ""
+    if state.order_id:
+        execution_summary = f"""
+        <div class="ledger-summary">
+          <div><span>Order</span><strong>{escape(state.order_id)}</strong></div>
+          <div><span>Status</span><strong>{escape(state.order_status)}</strong></div>
+          <div><span>Ledger</span><strong>{_money(_ACCOUNT.cash)} cash</strong></div>
+        </div>
+        """
+
+    return f"""
+    <section class="panel agent-output" id="agent-output">
+      <div class="panel-head">
+        <div>
+          <h2>Agent Output</h2>
+          <div class="panel-sub">{escape(banner) if banner else 'Decision Agent selected by default after analysis.'}</div>
+        </div>
+      </div>
+      <div class="decision-banner">
+        <div class="decision-kicker">{escape(selected.title)}</div>
+        <div class="decision-main">{escape(state.side)} {escape(state.symbol)}</div>
+        <div class="decision-meta">Confidence {state.confidence:.0%} · {escape(state.thesis)}</div>
+      </div>
+      <div class="trace-selected">
+        <h3>Trace Summary</h3>
+        <p>{escape(selected.summary)}</p>
+        <h3>Raw-ish Trace Details</h3>
+        <div class="trace-mini-log">{escape(selected.detail)}</div>
+      </div>
+      <div class="trace-io">
+        <div>
+          <h3>Inputs Used</h3>
+          <ul class="compact-list">
+            <li>Symbol: {escape(state.symbol)}</li>
+            <li>CNN Fear &amp; Greed: {escape(str(state.sentiment.get('value', 'n/a')))} / {escape(str(state.sentiment.get('zone', 'n/a')))}</li>
+            <li>EMA 8/21 and breakout state from security analysis</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Outputs Produced</h3>
+          <ul class="compact-list">
+            <li>Recommendation: {escape(state.side)}</li>
+            <li>Review state: {escape(state.review_status or 'Awaiting Approval')}</li>
+            <li>Execution: {escape(state.order_status or 'Pending')}</li>
+          </ul>
+        </div>
+      </div>
+      <div class="market-trace-grid">
+        {sentiment_html}
+        {technical_html}
+      </div>
+      {review_html}
+      {execution_summary}
+    </section>
+    """
+
+
 def _market_context_html(state: WorkflowState | None) -> str:
     if state and state.sentiment:
         sentiment = sentiment_snapshot_from_dict(state.sentiment)
@@ -512,140 +667,28 @@ def _analysis_panel(state: WorkflowState | None, banner: str = "") -> str:
             <input name="symbol" placeholder="Target symbol, e.g. AAPL" value="AAPL" />
             <button type="submit">Run analysis</button>
           </form>
-          <div class="hint">The approval gate only appears after the agents produce a recommendation.</div>
         </div>
         """
         return f"""
-        {_market_context_html(None)}
         {prompt}
+        {_agent_output_html(None, banner)}
         """
-
-    decision_callout = f"""
-    <div class="decision-banner">
-      <div class="decision-kicker">Decision Agent</div>
-      <div class="decision-main">{escape(state.side)} recommendation</div>
-      <div class="decision-meta">Confidence {state.confidence:.0%} · {escape(state.thesis)}</div>
-    </div>
-    """
-    return f"""
-    {_market_context_html(state)}
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Decision review</h2>
-        <div class="panel-sub">{escape(banner) if banner else 'Review the recommendation before human approval.'}</div>
-      </div>
-      {decision_callout}
-      <form class="workflow-form" method="post" action="/approve">
-        <input type="hidden" name="payload" value="{escape(state.to_payload())}" />
-        <button type="submit">Open approval screen</button>
-      </form>
-    <div class="hint">Trace ID {escape(state.analysis_id)} · {escape(state.symbol)} · Deep dive remains visible on the side.</div>
-    </div>
-    """
+    return _agent_output_html(state, banner)
 
 
 def _approval_panel(state: WorkflowState, banner: str = "") -> str:
-    return f"""
-    {_market_context_html(state)}
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Human approval</h2>
-        <div class="panel-sub">{escape(banner) if banner else 'Approve the recommendation, add a note, or reject it and rerun analysis.'}</div>
-      </div>
-      <div class="decision-banner">
-        <div class="decision-kicker">Recommendation</div>
-        <div class="decision-main">{escape(state.side)} {escape(state.symbol)}</div>
-        <div class="decision-meta">Confidence {state.confidence:.0%} · {escape(state.thesis)}</div>
-      </div>
-      <form class="workflow-form" method="post" action="/execute">
-        <input type="hidden" name="payload" value="{escape(state.to_payload())}" />
-        <textarea name="approval_note" rows="3" placeholder="Approval note or override rationale"></textarea>
-        <div class="button-row">
-          <button type="submit" name="approval" value="approve">Approve and continue</button>
-          <button type="submit" name="approval" value="reject" class="secondary">Reject</button>
-        </div>
-      </form>
-      <div class="hint">The approval note is captured before execution. The deep-dive rail keeps the agent reasoning visible.</div>
-    </div>
-    """
+    return _agent_output_html(state, banner)
 
 
 def _execution_panel(state: WorkflowState, banner: str = "") -> str:
-    order_rows = _orders_rows()
-    position_rows = _positions_rows()
-    if state.order_id:
-        order_banner = f"""
-        <div class="decision-banner success">
-          <div class="decision-kicker">Execution complete</div>
-          <div class="decision-main">{escape(state.side)} routed</div>
-          <div class="decision-meta">{escape(state.execution_note)}</div>
-        </div>
-        """
-    else:
-        order_banner = """
-        <div class="decision-banner">
-          <div class="decision-kicker">Execution screen</div>
-          <div class="decision-main">Ready to execute</div>
-          <div class="decision-meta">Human approval has been captured.</div>
-        </div>
-        """
-    execute_form = """
-    <form class="workflow-form" method="post" action="/execute">
-      <input type="hidden" name="payload" value="{payload}" />
-      <input type="hidden" name="approval_note" value="{note}" />
-      <button type="submit">Execute trade</button>
-    </form>
-    """.format(payload=escape(state.to_payload()), note=escape(state.approval_note))
-    restart_form = """
-    <form class="workflow-form" method="get" action="/">
-      <button type="submit" class="secondary">Analyze another target</button>
-    </form>
-    """
-    return f"""
-    {_market_context_html(state)}
-    <div class="panel">
-      <div class="panel-head">
-        <h2>Execute</h2>
-        <div class="panel-sub">{escape(banner) if banner else 'Execute only after approval; the trace rail stays visible for review.'}</div>
-      </div>
-      {order_banner}
-      {execute_form if not state.order_id else restart_form}
-      <div class="hint">Order ID {escape(state.order_id or 'pending')} · Approval: {escape(state.approval_note or 'none')}</div>
-    </div>
-    <section class="panel">
-      <div class="panel-head">
-        <h2>System Snapshot</h2>
-        <div class="panel-sub">Current state after execution</div>
-      </div>
-      <div class="kpis">
-        <div class="kpi"><span class="label">Cash</span><span class="value">{_money(_ACCOUNT.cash)}</span></div>
-        <div class="kpi"><span class="label">Equity</span><span class="value">{_money(_ACCOUNT.total_equity)}</span></div>
-        <div class="kpi"><span class="label">PnL</span><span class="value">{_money(_ACCOUNT.total_pnl)}</span></div>
-        <div class="kpi"><span class="label">Positions</span><span class="value">{len(_ACCOUNT.positions)}</span></div>
-      </div>
-      <h3>Active Runs</h3>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Target</th><th>Side</th><th>Qty</th><th>Entry</th><th>Value</th></tr></thead>
-          <tbody>{position_rows}</tbody>
-        </table>
-      </div>
-      <h3>Recent Actions</h3>
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Action</th><th>Target</th><th>Side</th><th>Status</th><th>Cash Flow</th></tr></thead>
-          <tbody>{order_rows}</tbody>
-        </table>
-      </div>
-    </section>
-    """
+    return _agent_output_html(state, banner) + _account_snapshot_html()
 
 
 def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = "") -> str:
     pipeline = _pipeline_html(stage, state)
     content = {
         "analyze": _analysis_panel(state, banner),
-        "approve": _approval_panel(state, banner) if state else _analysis_panel(None, banner),
+        "review": _approval_panel(state, banner) if state else _analysis_panel(None, banner),
         "execute": _execution_panel(state, banner) if state else _analysis_panel(None, banner),
         "done": _execution_panel(state, banner) if state else _analysis_panel(None, banner),
     }.get(stage, _analysis_panel(state, banner))
@@ -684,16 +727,7 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       margin: 0 auto;
       padding: 22px 18px 36px;
     }}
-    .hero {{
-      display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 22px 24px;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px) saturate(160%);
-      margin-bottom: 18px;
-    }}
+    .hero {{ display:none; }}
     .eyebrow {{
       display:inline-flex;
       padding: 7px 11px;
@@ -739,12 +773,7 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       font-weight: 700;
       color: var(--ink);
     }}
-    .stepper {{
-      display:grid;
-      grid-template-columns: repeat(3, minmax(0,1fr));
-      gap: 10px;
-      margin-bottom: 18px;
-    }}
+    .stepper {{ display:none; }}
     .step {{
       display:flex; align-items:center; gap: 10px;
       background: var(--panel);
@@ -807,7 +836,7 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
     }}
     .pipeline-grid {{
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }}
     .pipeline-card {{
@@ -831,6 +860,10 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
     .pipeline-card.awaiting {{
       border-style: dashed;
       background: linear-gradient(180deg, #fffdf8, #ffffff);
+    }}
+    .pipeline-card.rejected {{
+      border-color: rgba(220,38,38,.22);
+      background: linear-gradient(180deg, #fef2f2, #ffffff);
     }}
     .pipeline-card.pending {{
       opacity: .86;
@@ -924,10 +957,11 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
     .legend-dot.complete {{ background: #0f766e; }}
     .legend-dot.running {{ background: #2563eb; }}
     .legend-dot.review {{ background: #b45309; }}
+    .legend-dot.rejected {{ background: #dc2626; }}
     .legend-dot.pending {{ background: #94a3b8; }}
     .workspace {{
       display:grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
+      grid-template-columns: minmax(0, 1fr);
       gap: 18px;
       align-items:start;
     }}
@@ -1307,6 +1341,81 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       color: var(--muted);
       line-height: 1.5;
     }}
+    .agent-output {{
+      margin-top: 18px;
+    }}
+    .empty-output {{
+      min-height: 180px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border: 1px dashed rgba(16,24,40,.16);
+      border-radius: 18px;
+      background: #ffffff;
+      color: var(--muted);
+    }}
+    .empty-icon {{
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+      background: var(--primary-weak);
+      color: var(--primary);
+      font-weight: 900;
+    }}
+    .empty-title {{
+      font-weight: 800;
+      color: var(--ink);
+    }}
+    .trace-selected p {{
+      margin-top: 6px;
+      color: var(--ink);
+      line-height: 1.5;
+    }}
+    .trace-io {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }}
+    .compact-list {{
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: var(--ink);
+      line-height: 1.55;
+    }}
+    .market-trace-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }}
+    .compact-form {{
+      max-width: 560px;
+    }}
+    .ledger-summary {{
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }}
+    .ledger-summary div {{
+      border: 1px solid rgba(16,24,40,.08);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }}
+    .ledger-summary span {{
+      display:block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }}
     .footer-actions {{
       display:flex;
       gap: 10px;
@@ -1316,27 +1425,19 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
     @media (max-width: 1080px) {{
       .market-grid {{ grid-template-columns: 1fr; }}
       .workspace {{ grid-template-columns: 1fr; }}
+      .trace-io, .market-trace-grid, .ledger-summary {{ grid-template-columns: 1fr; }}
+      .pipeline-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
       .stepper {{ grid-template-columns: 1fr; }}
       .hero {{ flex-direction: column; align-items:flex-start; }}
       .hero-right {{ align-items:flex-start; text-align:left; }}
+    }}
+    @media (max-width: 640px) {{
+      .pipeline-grid {{ grid-template-columns: 1fr; }}
     }}
   </style>
 </head>
 <body>
     <div class="shell">
-    <header class="hero">
-      <div>
-        <div class="eyebrow">AI Engineer · Workflow Lab</div>
-        <h1>Agent decisions first. Execution second.</h1>
-        <p>A light, workflow-first interface built to show agent reasoning, human review, and deep dives before any simulated trade is routed.</p>
-      </div>
-      <div class="hero-right">
-        <div class="pill">Light theme</div>
-        <div class="pill">Pipeline exploration</div>
-      </div>
-    </header>
-
-    {_render_stepper(stage)}
     {pipeline}
 
     <main class="workspace">
@@ -1346,8 +1447,8 @@ def _render_shell(stage: str, state: WorkflowState | None = None, banner: str = 
       <aside class="panel">
         <div class="panel-head">
           <div>
-            <h2>Agent Deep Dive</h2>
-            <div class="panel-sub">Open each agent to inspect the rationale, not just the outcome.</div>
+            <h2>All Agent Traces</h2>
+            <div class="panel-sub">Each graph node exposes its trace summary and raw-ish details.</div>
           </div>
         </div>
         <div class="trace-grid">
@@ -1371,7 +1472,7 @@ async def home() -> HTMLResponse:
 @app.post("/analyze", response_class=HTMLResponse)
 async def analyze(symbol: str = Form(default="AAPL")) -> HTMLResponse:
     state = _build_analysis(symbol)
-    return HTMLResponse(_render_shell("approve", state, banner="Analysis complete. Review the traces and decide whether to proceed."))
+    return HTMLResponse(_render_shell("review", state, banner="Analysis complete. Decision Agent is selected."))
 
 
 @app.post("/approve", response_class=HTMLResponse)
@@ -1387,19 +1488,21 @@ async def approve(
     state.approval_note = approval_note.strip()
 
     if approval.lower() == "reject":
+        state.review_status = "rejected"
         return HTMLResponse(
             _render_shell(
-                "analyze",
+                "review",
                 state,
-                banner="The trade was rejected by the human reviewer. Re-run analysis to try another target.",
+                banner="Human Review rejected the recommendation.",
             )
         )
 
+    state.review_status = "approved"
     return HTMLResponse(
         _render_shell(
             "execute",
             state,
-            banner="Approval captured. The next screen executes the trade.",
+            banner="Approval captured. The graph remains active for execution.",
         )
     )
 
@@ -1415,6 +1518,8 @@ async def execute(
     state = WorkflowState.from_payload(payload)
     if approval_note.strip():
         state.approval_note = approval_note.strip()
+    if not state.review_status:
+        state.review_status = "approved"
     state = _execute_trade(state)
 
     return HTMLResponse(

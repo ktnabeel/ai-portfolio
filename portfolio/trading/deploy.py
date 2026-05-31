@@ -262,7 +262,7 @@ footer { display: none !important; }
 }
 .pipeline-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 .pipeline-card {
@@ -340,6 +340,7 @@ footer { display: none !important; }
 .legend-dot.complete { background: #0f766e; }
 .legend-dot.running { background: #2563eb; }
 .legend-dot.review { background: #b45309; }
+.legend-dot.rejected { background: #dc2626; }
 .legend-dot.pending { background: #94a3b8; }
 .trace-expander {
   border-radius: 14px;
@@ -501,6 +502,14 @@ footer { display: none !important; }
   .deploy-grid, .deploy-hero {
     grid-template-columns: 1fr;
   }
+  .pipeline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .pipeline-grid {
+    grid-template-columns: 1fr;
+  }
 }
 """
 
@@ -529,49 +538,62 @@ def render_market_context_html(symbol: str = "AAPL") -> str:
 
 
 def render_agent_overview_html() -> str:
-    return """
+    decision = build_security_decision("AAPL", fetch_sentiment_snapshot())
+    sentiment = decision.sentiment
+    technical = decision.technical
+    sentiment_line = (
+        f"CNN Fear & Greed {sentiment.value}/100 ({sentiment.zone}) with previous close {sentiment.previous_close}, "
+        f"one week {sentiment.one_week_ago}, one month {sentiment.one_month_ago}."
+        if sentiment
+        else "CNN Fear & Greed unavailable; neutral context is used."
+    )
+    technical_line = (
+        f"EMA 8 ${technical.ema_8:.2f}, EMA 21 ${technical.ema_21:.2f}; breakout rationale: {technical.summary}"
+        if technical
+        else "EMA 8/21 and breakout context unavailable."
+    )
+    return f"""
     <div class="pipeline-shell">
       <div class="pipeline-head">
         <div class="eyebrow">Agent Pipeline Flow</div>
-        <div class="pipeline-title">LangGraph orchestration with visible decision traces</div>
-        <div class="pipeline-copy">The interface prioritizes agent reasoning, deep dives, and human review. Execution stays present, but it is visually secondary to the decision chain.</div>
+        <div class="pipeline-title">Inspectable agent graph</div>
       </div>
       <div class="pipeline-grid">
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="blue">🔎</div>
+          <div class="pipeline-icon" data-accent="blue">S</div>
           <div class="pipeline-name">Security Agent</div>
-          <div class="pipeline-summary">Validate and sanitize the target.</div>
-          <div class="pipeline-detail">Checks input hygiene, policy guardrails, and target readiness before the rest of the workflow proceeds.</div>
+          <div class="pipeline-summary">Validate and inspect the target.</div>
+          <div class="pipeline-detail">{escape(technical_line)}</div>
           <details class="trace-expander">
             <summary>Deep dive</summary>
-            <div class="trace-copy">Rejects malformed symbols early and keeps the review surface clean.</div>
+            <div class="trace-copy">Security rationale: {escape(decision.rationale)}</div>
           </details>
           <div class="pipeline-status">Complete</div>
         </article>
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="teal">🧭</div>
+          <div class="pipeline-icon" data-accent="teal">R</div>
           <div class="pipeline-name">Risk &amp; Sentiment</div>
-          <div class="pipeline-summary">Blend signal tone, noise, and news.</div>
-          <div class="pipeline-detail">Combines lightweight sentiment and recent context to form a usable directional read.</div>
+          <div class="pipeline-summary">CNN Fear &amp; Greed and risk context.</div>
+          <div class="pipeline-detail">{escape(sentiment_line)}</div>
           <details class="trace-expander">
             <summary>Deep dive</summary>
-            <div class="trace-copy">The agent compresses multiple context clues into one concise score.</div>
+            <div class="trace-copy">{escape(sentiment_line)}</div>
           </details>
           <div class="pipeline-status">Complete</div>
         </article>
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="amber">🔁</div>
+          <div class="pipeline-icon" data-accent="amber">G</div>
           <div class="pipeline-name">Regime Detection</div>
-          <div class="pipeline-summary">Classify the market context.</div>
-          <div class="pipeline-detail">Filters the setup through a bull, bear, or neutral gate so the recommendation stays grounded.</div>
+          <div class="pipeline-summary">EMA 8/21, range, and volume.</div>
+          <div class="pipeline-detail">{escape(technical_line)}</div>
           <details class="trace-expander">
             <summary>Deep dive</summary>
-            <div class="trace-copy">This is where the workflow decides whether the environment supports a trade at all.</div>
+            <div class="trace-copy">{escape(technical_line)}</div>
           </details>
           <div class="pipeline-status">Complete</div>
         </article>
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="violet">📊</div>
+          <div class="pipeline-icon" data-accent="violet">O</div>
           <div class="pipeline-name">Options Chain</div>
           <div class="pipeline-summary">Surface the nearby contract map.</div>
           <div class="pipeline-detail">Puts the actionable range in view before any decision is drafted or approved.</div>
@@ -582,18 +604,29 @@ def render_agent_overview_html() -> str:
           <div class="pipeline-status">Complete</div>
         </article>
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="green">🎯</div>
+          <div class="pipeline-icon" data-accent="green">D</div>
           <div class="pipeline-name">Decision Agent</div>
-          <div class="pipeline-summary">Choose buy or sell and explain why.</div>
-          <div class="pipeline-detail">Produces the recommendation that human review can approve, reject, or route onward.</div>
+          <div class="pipeline-summary">Recommend {escape(decision.side)} with {decision.confidence:.0%} confidence.</div>
+          <div class="pipeline-detail">Thesis: {escape(decision.thesis)}. EMA 8/21 and breakout rationale are included in the trace.</div>
           <details class="trace-expander">
             <summary>Deep dive</summary>
-            <div class="trace-copy">This is the step users inspect before they ever reach execution.</div>
+            <div class="trace-copy">{escape(decision.rationale)}</div>
           </details>
-          <div class="pipeline-status">Running</div>
+          <div class="pipeline-status">Complete</div>
         </article>
         <article class="pipeline-card">
-          <div class="pipeline-icon" data-accent="slate">💸</div>
+          <div class="pipeline-icon" data-accent="amber">H</div>
+          <div class="pipeline-name">Human Review</div>
+          <div class="pipeline-summary">Awaiting Approval</div>
+          <div class="pipeline-detail">Approve or reject inside this same graph workflow.</div>
+          <details class="trace-expander">
+            <summary>Deep dive</summary>
+            <div class="trace-copy">The review gate appears after the recommendation exists.</div>
+          </details>
+          <div class="pipeline-status">Awaiting Approval</div>
+        </article>
+        <article class="pipeline-card">
+          <div class="pipeline-icon" data-accent="slate">E</div>
           <div class="pipeline-name">Execution Agent</div>
           <div class="pipeline-summary">Route the simulated paper trade.</div>
           <div class="pipeline-detail">Keeps the broker action visible but secondary to the reasoning and approval flow.</div>
@@ -608,7 +641,30 @@ def render_agent_overview_html() -> str:
         <span><i class="legend-dot complete"></i>Complete</span>
         <span><i class="legend-dot running"></i>Running</span>
         <span><i class="legend-dot review"></i>Awaiting approval</span>
+        <span><i class="legend-dot rejected"></i>Rejected</span>
         <span><i class="legend-dot pending"></i>Pending</span>
+      </div>
+    </div>
+    """
+
+
+def render_agent_output_html(symbol: str = "AAPL") -> str:
+    decision = build_security_decision(symbol, fetch_sentiment_snapshot())
+    return f"""
+    <div class="deploy-panel">
+      <h2>Agent Output</h2>
+      <div class="decision-pill">Decision Agent</div>
+      <h3 style="margin:12px 0 6px;">{escape(decision.side)} {escape(decision.symbol)}</h3>
+      <p style="color:#667085; line-height:1.5; margin-top:0;">Confidence {decision.confidence:.0%}. Thesis: {escape(decision.thesis)}.</p>
+      <details class="trace-expander" open>
+        <summary>Raw-ish trace details</summary>
+        <div class="trace-copy">EMA 8/21 and breakout rationale: {escape(decision.rationale)}</div>
+      </details>
+      <div style="margin-top:14px;">
+        {render_sentiment_panel(decision.sentiment)}
+      </div>
+      <div style="margin-top:14px;">
+        {render_technical_panel(decision)}
       </div>
     </div>
     """
@@ -774,24 +830,11 @@ def render_home_html() -> str:
 </head>
 <body>
   <div class="deploy-shell">
-    <section class="deploy-hero">
-      <div>
-        <div class="deploy-pill">AI Engineer</div>
-        <h1>Agent decisions first. Execution second.</h1>
-        <p>A clean workflow showing how the agents reason, how each trace expands, and how human review gates any simulated broker action.</p>
-      </div>
-      <div class="deploy-pill">{runtime_mode()}</div>
-    </section>
-
     <div class="deploy-grid">
       <section class="deploy-panel">
         <h2>Workflow</h2>
         {render_agent_overview_html()}
-        <h3>Live Market Context</h3>
-        <p style="margin-top:-6px; color:#667085; line-height:1.5;">CNN Fear &amp; Greed and the chart read update here so the approval step has a visible market backstop.</p>
-        {render_market_context_html()}
         <h3>Human Review</h3>
-        <p style="margin-top:-6px; color:#667085; line-height:1.5;">Use the controls below only after you inspect the agent trace rail. The execution controls remain small on purpose.</p>
         <form class="deploy-form" method="post" action="/api/place-order">
           <input name="symbol" placeholder="Target, e.g. AAPL" value="AAPL" />
           <select name="strategy">
@@ -823,6 +866,7 @@ def render_home_html() -> str:
         </div>
       </section>
       <section>
+        {render_agent_output_html()}
         {account_html}
       </section>
     </div>
@@ -938,28 +982,11 @@ def build_gradio_app():
 
     with gr.Blocks(title=APP_TITLE, css=LEAN_CSS, theme=gr.themes.Soft()) as demo:
         with gr.Column(elem_id="deploy-root", elem_classes=["deploy-shell"]):
-            gr.HTML(
-                f"""
-                <section class="deploy-hero">
-                  <div>
-                    <div class="deploy-pill">AI Engineer</div>
-                    <h1>Agent decisions first. Execution second.</h1>
-                    <p>A light-theme workflow that keeps the agent reasoning visible and the execution controls intentionally secondary.</p>
-                  </div>
-                  <div class="deploy-pill">{runtime_mode()}</div>
-                </section>
-                """
-            )
-
             with gr.Row():
                 with gr.Column(scale=1, min_width=340):
                     gr.Markdown("### Workflow")
                     symbol = gr.Textbox(label="Target", value="AAPL")
                     gr.HTML(render_agent_overview_html())
-
-                    gr.Markdown("### Live Market Context")
-                    market_output = gr.HTML(render_market_context_html())
-                    refresh_market_btn = gr.Button("Refresh Market Story")
 
                     gr.Markdown("### Human Review")
                     strategy = gr.Dropdown(["Plan A", "Plan B", "Plan C", "No Run"], value="Plan A", label="Plan")
@@ -979,6 +1006,7 @@ def build_gradio_app():
                     action_status = gr.HTML("")
 
                 with gr.Column(scale=2, min_width=500):
+                    agent_output = gr.HTML(render_agent_output_html())
                     account_output = gr.HTML(render_account_summary_html())
                     refresh_btn = gr.Button("Refresh State")
 
@@ -987,10 +1015,10 @@ def build_gradio_app():
                 inputs=[symbol, strategy, option_type, strike, expiration, quantity, limit_price],
                 outputs=[account_output, action_status],
             )
-            refresh_market_btn.click(
-                fn=render_market_context_html,
+            symbol.change(
+                fn=render_agent_output_html,
                 inputs=[symbol],
-                outputs=[market_output],
+                outputs=[agent_output],
             )
             close_btn.click(
                 fn=_close,
