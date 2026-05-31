@@ -7,7 +7,7 @@ sdk: gradio
 sdk_version: 5.23.0
 app_file: app_deploy.py
 pinned: false
-python_version: "3.10"
+python_version: "3.12"
 ---
 
 # AI Project Portfolio
