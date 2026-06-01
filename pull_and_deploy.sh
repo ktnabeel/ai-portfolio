@@ -14,11 +14,20 @@ if [ ! -d "$TARGET_DIR" ]; then
     git clone "$REPO_URL" "$TARGET_DIR"
     cd "$TARGET_DIR"
 else
-    echo "Updating existing repository..."
-    cd "$TARGET_DIR"
-    git fetch origin
-    # This ensures we match the remote exactly
-    git reset --hard origin/$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+    if [ ! -d "$TARGET_DIR/.git" ]; then
+        BACKUP_DIR="${TARGET_DIR}.backup.$(date +%Y%m%d%H%M%S)"
+        echo "Existing target is not a git repository. Backing up to: $BACKUP_DIR"
+        mv "$TARGET_DIR" "$BACKUP_DIR"
+        echo "Cloning a fresh repository..."
+        git clone "$REPO_URL" "$TARGET_DIR"
+        cd "$TARGET_DIR"
+    else
+        echo "Updating existing repository..."
+        cd "$TARGET_DIR"
+        git fetch origin
+        # This ensures we match the remote exactly
+        git reset --hard origin/$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
+    fi
 fi
 
 # 2. Ensure Environment is ready
