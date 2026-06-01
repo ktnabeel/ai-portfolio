@@ -6,8 +6,8 @@ NGINX_CONF="/etc/nginx/nginx.conf"
 BACKUP_SUFFIX=".$(date +%Y%m%d-%H%M%S).bak"
 
 echo "[*] Backing up configs..."
-cp "$SITE_CONF" "$SITE_CONF$BACKUP_SUFFIX"
-cp "$NGINX_CONF" "$NGINX_CONF$BACKUP_SUFFIX"
+sudo cp "$SITE_CONF" "$SITE_CONF$BACKUP_SUFFIX"
+sudo cp "$NGINX_CONF" "$NGINX_CONF$BACKUP_SUFFIX"
 
 echo "[*] Ensuring global rate-limit zones exist in nginx.conf..."
 
@@ -68,6 +68,3 @@ echo "[✓] Abusive rate limiting applied to neurons.fyi"
 echo "    - 5 req/sec per IP, burst 10"
 echo "    - Max 10 concurrent connections per IP"
 echo "    - Blocks empty UA + curl/wget/python/*bot"
-
-chmod +x harden-nginx.sh
-sudo ./harden-nginx.sh

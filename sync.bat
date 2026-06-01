@@ -3,6 +3,8 @@ setlocal EnableExtensions
 
 cd /d "%~dp0"
 
+set "PYTHONUTF8=1"
+
 if exist ".sync.local.bat" (
   call ".sync.local.bat"
 ) else (

@@ -7,6 +7,8 @@ TARGET_DIR="$HOME/ai-portfolio"
 set -e
 
 echo "--- Starting GitHub Pull & Deploy ---"
+echo "Deploy user: $(id -un)"
+echo "Target directory: $TARGET_DIR"
 
 # 1. Handle Repository
 if [ ! -d "$TARGET_DIR" ]; then
@@ -56,9 +58,11 @@ echo "Syncing dependencies using $UV_BIN..."
 echo "Restarting application..."
 chmod +x ./start.sh
 UV_BIN="$UV_BIN" ./start.sh restart
+UV_BIN="$UV_BIN" ./start.sh status
 
 echo "------------------------------------------------"
 echo "Success! App is running."
+echo "Commit: $(git rev-parse --short HEAD)"
 PORT="$("$UV_BIN" run python scripts/config_value.py server.port 2>/dev/null || echo "7860")"
 PUBLIC_IP="$(curl -s --max-time 5 ifconfig.me || true)"
 if [ -n "$PUBLIC_IP" ]; then

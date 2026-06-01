@@ -25,17 +25,26 @@ mkdir -p logs
 
 # Install dependencies using uv
 echo "Installing project dependencies..."
-/home/ubuntu/.cargo/bin/uv sync
+UV_BIN="$(command -v uv || true)"
+if [ -z "$UV_BIN" ] && [ -x "$HOME/.local/bin/uv" ]; then
+    UV_BIN="$HOME/.local/bin/uv"
+fi
+if [ -z "$UV_BIN" ] && [ -x "$HOME/.cargo/bin/uv" ]; then
+    UV_BIN="$HOME/.cargo/bin/uv"
+fi
+if [ -z "$UV_BIN" ]; then
+    echo "ERROR: uv installation was not found after install step." >&2
+    exit 1
+fi
+"$UV_BIN" sync
 
-# Kill any existing app.py processes
-pkill -f "python app.py" || true
-
-# Run the app in the background
+# Run the app through the shared service wrapper so stale listeners are handled consistently.
 echo "Starting the application..."
-nohup /home/ubuntu/.cargo/bin/uv run python app.py > logs/app.log 2>&1 &
+chmod +x ./start.sh
+UV_BIN="$UV_BIN" ./start.sh restart
 
 echo "------------------------------------------------"
 echo "Deployment successful!"
 echo "The app should be running at http://43.131.49.3:7860"
-echo "Check ~/ai-portfolio/logs/app.log for details."
+echo "Check ~/ai-portfolio/logs/ai-portfolio.err.log for details."
 echo "------------------------------------------------"

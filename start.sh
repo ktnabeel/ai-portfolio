@@ -84,12 +84,21 @@ _kill_existing() {
                     kill -9 "${pid}" 2>/dev/null || true
                     sleep 1
                 fi
+                if kill -0 "${pid}" 2>/dev/null && command -v sudo >/dev/null 2>&1; then
+                    echo "  PID ${pid} needs elevated permissions; trying sudo -n"
+                    sudo -n kill "${pid}" 2>/dev/null || true
+                    sleep 1
+                    sudo -n kill -9 "${pid}" 2>/dev/null || true
+                    sleep 1
+                fi
             fi
         done
         sleep 1
         # Verify port is actually free
         if ss -tlnp 2>/dev/null | grep -q ":${PORT} "; then
-            echo "  WARNING: Port ${PORT} is still in use after kill attempts."
+            echo "  ERROR: Port ${PORT} is still in use after kill attempts." >&2
+            echo "  Run with sudo or stop the stale listener before starting." >&2
+            return 1
         else
             echo "  Port ${PORT} is free."
         fi
