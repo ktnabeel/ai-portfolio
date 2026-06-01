@@ -11,8 +11,8 @@ site:
   headline: "Building Autonomous Agents and Production-Ready AI Systems."
   side_copy: "An engineering-focused portfolio showcasing multi-agent orchestration, LLM pipelines, and automated decision support systems."
   intro_kicker: Portfolio Workspace
-  intro_headline: "Selected AI builds presented as concise case studies."
-  intro_copy: "Each project tile is designed for fast review: the workflow, architecture, AI role, and production proof behind it."
+  intro_headline: "Selected AI builds, framed as concise case studies."
+  intro_copy: "Each tile gives a fast read on the workflow, architecture, AI role, and production proof behind the work."
   project_kicker: Project Index
   project_heading: AI Engineering Portfolio
   status_label: AI/ML Engineer | Agents and System Design Showcase

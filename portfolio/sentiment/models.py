@@ -12,6 +12,9 @@ class Review:
     text: str
     rating: float          # 1.0–5.0 star rating
     helpful_votes: int = 0
+    category: str = ""
+    subcategory: str = ""
+    source: str = "Yelp"
 
 
 @dataclass

@@ -127,6 +127,40 @@ def test_sentiment_tab_renders() -> None:
         assert isinstance(tab, gr.Blocks)
 
 
+def test_sentiment_dataset_dropdown_modes() -> None:
+    """Sentiment dataset modes use source-specific labels and visibility."""
+    from portfolio.sentiment.render import _init_dropdowns
+
+    amazon_category, amazon_subcategory, amazon_product, amazon_compare = _init_dropdowns("Amazon Style")
+    yelp_category, yelp_subcategory, yelp_product, yelp_compare = _init_dropdowns("Yelp Style")
+
+    assert amazon_category.label == "2. Product Category"
+    assert amazon_category.value == "\u2014 All Categories \u2014"
+    assert amazon_subcategory.visible is True
+    assert amazon_subcategory.interactive is True
+    assert amazon_product.label == "4. Amazon Product"
+    assert amazon_compare.visible is False
+
+    assert yelp_category.label == "2. Business Type"
+    assert yelp_category.value == "\u2014 All Business Types \u2014"
+    assert yelp_subcategory.visible is False
+    assert yelp_product.label == "4. Selection A"
+    assert yelp_compare.visible is True
+
+
+def test_sentiment_actions_validate_required_selection() -> None:
+    """Sentiment actions show validation instead of running with empty selections."""
+    from portfolio.sentiment.render import _analyze_product, _compare_products
+
+    amazon_html = _analyze_product("", "Amazon Style")
+    yelp_html = _compare_products("", "", "Yelp Style")
+
+    assert "Select a Amazon product first." in amazon_html
+    assert "Choose an item from the dropdown" in amazon_html
+    assert "Select two Yelp businesses first." in yelp_html
+    assert "Choose Selection A and Selection B" in yelp_html
+
+
 def test_resume_matcher_tab_renders() -> None:
     """Resume Matcher tab renders without errors."""
     with gr.Blocks():

@@ -4,24 +4,190 @@ from collections import defaultdict
 
 import gradio as gr
 
-from .pipeline import get_reviews, get_business_domains
+from .pipeline import get_reviews, get_amazon_reviews, get_business_domains, get_product_metadata
 from .analyzer import build_product_sentiment, generate_verdict
 from .models import ProductSentiment
 
 SENTIMENT_CSS = """
 #sentiment-tab {
     background:
-        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        radial-gradient(circle at 10% 0%, rgba(124,183,255,.20), transparent 32%),
+        radial-gradient(circle at 88% 12%, rgba(85,214,165,.14), transparent 30%),
+        linear-gradient(180deg, rgba(255,255,255,.76), rgba(245,249,255,.92)),
         var(--theme-panel, #ffffff);
-    border: 1px solid var(--theme-line, #d9e2ec);
-    border-radius: 18px;
-    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
-    color: var(--theme-ink, rgba(255,255,255,.92));
+    border: 1px solid rgba(217,226,236,.9);
+    border-radius: 26px;
+    box-shadow: 0 28px 80px rgba(16,24,40,.12);
+    color: var(--theme-ink, #111827);
     font-family: 'Segoe UI', system-ui, sans-serif;
     padding: 20px;
+    overflow: visible;
 }
 #sentiment-tab h1, #sentiment-tab h2, #sentiment-tab h3 {
     color: var(--theme-blue, #1ca0f1);
+}
+.sent-control-panel,
+.sent-card,
+.sent-col,
+.sent-compare-summary {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.48)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid rgba(199,213,232,.72);
+    border-radius: 22px;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.82),
+        0 22px 56px rgba(16,24,40,.10);
+}
+.sent-control-panel {
+    padding: 20px;
+    margin: 12px 0 18px;
+}
+.sent-dataset-note {
+    color: var(--theme-muted, #667085);
+    font-size: .92em;
+    line-height: 1.5;
+    margin: -4px 0 12px;
+}
+#sentiment-tab .form,
+#sentiment-tab .panel,
+#sentiment-tab .block,
+#sentiment-tab .gradio-row,
+#sentiment-tab .gradio-column {
+    background: transparent !important;
+    box-shadow: none;
+}
+#sentiment-tab label,
+#sentiment-tab .label-wrap span {
+    color: var(--theme-muted, #667085) !important;
+    font-weight: 650;
+}
+#sentiment-tab input,
+#sentiment-tab textarea,
+#sentiment-tab select,
+#sentiment-tab .wrap,
+#sentiment-tab .container,
+#sentiment-tab [role="listbox"],
+#sentiment-tab [data-testid="block-info"] {
+    border-color: rgba(185,202,226,.78) !important;
+}
+#sentiment-tab .wrap,
+#sentiment-tab .container {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.52)) !important;
+    border-radius: 14px !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.86),
+        0 10px 26px rgba(16,24,40,.06) !important;
+}
+.sent-toolbar-row {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    gap: 12px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    margin-top: 0 !important;
+    padding: 0 !important;
+}
+.sent-toolbar {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-top: 10px !important;
+    display: inline-block !important;
+    width: auto !important;
+    max-width: 100% !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+.sent-toolbar .form,
+.sent-toolbar > div,
+.sent-toolbar .gradio-row,
+.sent-toolbar-row .form,
+.sent-toolbar-row > div,
+#sentiment-tab .sent-toolbar,
+#sentiment-tab .sent-toolbar.block,
+#sentiment-tab .sent-toolbar-row,
+#sentiment-tab .sent-toolbar-row.block {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+.sent-button-cell,
+.sent-button-cell .form {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+.sent-toolbar-row > *,
+.sent-refresh-btn,
+.sent-action-btn,
+.sent-primary-action {
+    flex: 0 0 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+#sentiment-tab .sent-refresh-btn button,
+#sentiment-tab .sent-action-btn button,
+#sentiment-tab .sent-primary-action button {
+    min-height: 44px !important;
+    width: auto !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(185,202,226,.72) !important;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.54)) !important;
+    color: #111827 !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.92),
+        0 12px 30px rgba(16,24,40,.10) !important;
+    font-weight: 750 !important;
+    letter-spacing: 0 !important;
+    backdrop-filter: blur(18px) saturate(170%);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+#sentiment-tab .sent-refresh-btn button {
+    min-width: 156px !important;
+    padding: 0 20px !important;
+}
+#sentiment-tab .sent-action-btn button {
+    min-width: 158px !important;
+    padding: 0 22px !important;
+}
+#sentiment-tab .sent-primary-action button {
+    min-width: 246px !important;
+    padding: 0 28px !important;
+}
+#sentiment-tab .sent-primary-action button {
+    border-color: rgba(255,122,24,.60) !important;
+    background:
+        linear-gradient(180deg, rgba(255,139,55,.95), rgba(255,105,20,.92)) !important;
+    color: #ffffff !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.38),
+        0 16px 34px rgba(255,105,20,.26) !important;
+}
+#sentiment-tab .sent-refresh-btn button:hover,
+#sentiment-tab .sent-action-btn button:hover,
+#sentiment-tab .sent-primary-action button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(124,183,255,.70) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.94),
+        0 16px 38px rgba(16,24,40,.14) !important;
+}
+#sentiment-tab .sent-primary-action button:hover {
+    border-color: rgba(255,122,24,.78) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.42),
+        0 18px 42px rgba(255,105,20,.32) !important;
 }
 /* Loading spinner */
 .sent-loading {
@@ -46,18 +212,16 @@ SENTIMENT_CSS = """
 .sent-neg { color: var(--theme-red, #ff7369); font-weight: bold; }
 .sent-neu { color: var(--theme-muted, rgba(255,255,255,.68)); font-weight: bold; }
 .sent-card {
-    background: var(--theme-panel, #373c3f);
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
-    border-radius: 14px;
     padding: 18px;
     margin: 10px 0;
-    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
 .sent-verdict {
-    background: linear-gradient(135deg, var(--theme-panel, #373c3f), var(--theme-surface, #454b4e));
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    background:
+        linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.9)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid rgba(199,213,232,.9);
     border-left: 4px solid var(--theme-blue, #1ca0f1);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 18px 22px;
     margin: 14px 0;
     font-size: 0.96em;
@@ -98,11 +262,7 @@ SENTIMENT_CSS = """
 .sent-col {
     flex: 1;
     min-width: 0;
-    background: var(--theme-panel, #373c3f);
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
-    border-radius: 14px;
     padding: 18px;
-    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
 }
 .sent-col-a { border-left: 4px solid var(--theme-blue, #1ca0f1); }
 .sent-col-b { border-left: 4px solid var(--theme-amber, #dfab01); }
@@ -114,9 +274,6 @@ SENTIMENT_CSS = """
 }
 .sent-col-b .sent-col-title { color: var(--theme-amber, #dfab01); }
 .sent-compare-summary {
-    background: linear-gradient(135deg, var(--theme-panel, #373c3f), var(--theme-surface, #454b4e));
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
-    border-radius: 16px;
     padding: 16px 20px;
     margin-bottom: 16px;
     text-align: center;
@@ -141,70 +298,108 @@ SENTIMENT_CSS = """
 .sent-stat-item { text-align: center; }
 .sent-stat-val { font-size: 1.3em; font-weight: 700; }
 .sent-stat-label { color: var(--theme-muted, rgba(255,255,255,.68)); font-size: 0.85em; }
+@media (max-width: 900px) {
+    .sent-compare { flex-direction: column; }
+    .sent-toolbar-row { flex-direction: column !important; justify-content: stretch !important; }
+    .sent-toolbar-row > * { width: 100% !important; }
+    #sentiment-tab .sent-refresh-btn button,
+    #sentiment-tab .sent-action-btn button,
+    #sentiment-tab .sent-primary-action button { width: 100% !important; }
+}
 """
 
 # Global cache
-_review_index: dict[str, list] | None = None
-_sentiment_cache: dict[str, ProductSentiment] = {}
-_name_to_id: dict[str, str] = {}
-_domain_map: dict[str, str] = {}
+_review_indexes: dict[str, dict[str, list]] = {}
+_sentiment_cache: dict[tuple[str, str], ProductSentiment] = {}
+_name_to_ids: dict[str, dict[str, str]] = {}
+_domain_maps: dict[str, dict[str, str]] = {}
+_metadata_maps: dict[str, dict[str, dict[str, str]]] = {}
 
 
-def _ensure_index():
+def _normalize_source(source: str | None) -> str:
+    return "amazon" if (source or "").lower().startswith("amazon") else "yelp"
+
+
+def _ensure_index(source: str = "yelp"):
     """Load reviews from pipeline and index by product_id."""
-    global _review_index, _domain_map
-    if _review_index is not None:
+    source = _normalize_source(source)
+    if source in _review_indexes:
         return
-    reviews = get_reviews()
-    _domain_map = get_business_domains()
-    _review_index = defaultdict(list)
+    reviews = get_amazon_reviews() if source == "amazon" else get_reviews()
+    _domain_maps[source] = get_business_domains(source)
+    _metadata_maps[source] = get_product_metadata(source)
+    _review_indexes[source] = defaultdict(list)
     for r in reviews:
-        _review_index[r.product_id].append(r)
+        _review_indexes[source][r.product_id].append(r)
 
 
-def _get_domain_choices() -> list[str]:
-    """Return sorted list of unique business domains."""
-    _ensure_index()
-    return sorted(set(_domain_map.values()))
+def _get_category_choices(source: str = "yelp") -> list[str]:
+    """Return sorted list of source-specific category choices."""
+    source = _normalize_source(source)
+    _ensure_index(source)
+    metadata = _metadata_maps[source]
+    key = "category" if source == "amazon" else "subcategory"
+    return sorted({values.get(key, "") for values in metadata.values() if values.get(key, "")})
 
 
-def _filter_by_domain(domain: str | None) -> list[str]:
-    """Return business names (sorted) for the selected domain. None/empty = all."""
-    global _name_to_id
-    _ensure_index()
-    _name_to_id.clear()
-
-    if not domain:
-        # All businesses
-        for pid, revs in _review_index.items():
-            _name_to_id[revs[0].title] = pid
-    else:
-        for pid, revs in _review_index.items():
-            if _domain_map.get(pid) == domain:
-                _name_to_id[revs[0].title] = pid
-
-    return sorted(_name_to_id.keys())
+def _get_subcategory_choices(source: str, category: str | None) -> list[str]:
+    source = _normalize_source(source)
+    _ensure_index(source)
+    if source != "amazon":
+        return []
+    metadata = _metadata_maps[source]
+    return sorted({
+        values.get("subcategory", "")
+        for values in metadata.values()
+        if values.get("subcategory", "") and (not category or values.get("category") == category)
+    })
 
 
-def _get_or_analyze(selection: str) -> ProductSentiment | None:
+def _filter_products(source: str, category: str | None, subcategory: str | None = None) -> list[str]:
+    """Return product/business names for selected source filters."""
+    source = _normalize_source(source)
+    _ensure_index(source)
+    name_to_id: dict[str, str] = {}
+    metadata = _metadata_maps[source]
+    category = "" if category in (None, "— All Categories —", "— All Business Types —") else category
+    subcategory = "" if subcategory in (None, "— All Subcategories —") else subcategory
+
+    for pid, revs in _review_indexes[source].items():
+        values = metadata.get(pid, {})
+        if source == "amazon":
+            if category and values.get("category") != category:
+                continue
+            if subcategory and values.get("subcategory") != subcategory:
+                continue
+        elif category and values.get("subcategory") != category:
+            continue
+        name_to_id[revs[0].title] = pid
+
+    _name_to_ids[source] = name_to_id
+    return sorted(name_to_id.keys())
+
+
+def _get_or_analyze(selection: str, source: str = "yelp") -> ProductSentiment | None:
     """Resolve a business name to its ProductSentiment, computing if needed."""
+    source = _normalize_source(source)
     if not selection:
         return None
-    _ensure_index()
-    if not _name_to_id:
-        _filter_by_domain(None)
-    product_id = _name_to_id.get(selection)
+    _ensure_index(source)
+    if source not in _name_to_ids or not _name_to_ids[source]:
+        _filter_products(source, None, None)
+    product_id = _name_to_ids[source].get(selection)
     if product_id is None:
-        _filter_by_domain(None)
-        product_id = _name_to_id.get(selection)
+        _filter_products(source, None, None)
+        product_id = _name_to_ids[source].get(selection)
         if product_id is None:
             return None
-    if product_id not in _sentiment_cache:
-        reviews = _review_index.get(product_id, [])
+    cache_key = (source, product_id)
+    if cache_key not in _sentiment_cache:
+        reviews = _review_indexes[source].get(product_id, [])
         if not reviews:
             return None
-        _sentiment_cache[product_id] = build_product_sentiment(reviews)
-    return _sentiment_cache[product_id]
+        _sentiment_cache[cache_key] = build_product_sentiment(reviews)
+    return _sentiment_cache[cache_key]
 
 
 def _render_product_card(ps: ProductSentiment, max_reviews: int = 6) -> str:
@@ -256,11 +451,21 @@ def _score(ps: ProductSentiment) -> float:
     return ps.avg_rating * 20 + ps.positive_pct * 40 - ps.negative_pct * 30
 
 
-def _analyze_product(selection: str) -> str:
+def _analyze_product(selection: str, source: str = "Yelp") -> str:
     """Run sentiment analysis for the selected business (by name), return HTML."""
     if not selection:
-        return ""
-    ps = _get_or_analyze(selection)
+        source_key = _normalize_source(source)
+        noun = "Amazon product" if source_key == "amazon" else "Yelp business"
+        return f"""
+        <div class='sent-card' style='border-left:4px solid var(--theme-amber,#dfab01)'>
+            <strong>Select a {noun} first.</strong><br>
+            <span style='color:var(--theme-muted,#667085)'>
+                Choose an item from the dropdown before running sentiment analysis.
+            </span>
+        </div>
+        """
+    source_key = _normalize_source(source)
+    ps = _get_or_analyze(selection, source_key)
     if ps is None:
         return "<p style='color:var(--theme-red,#ff7369)'>Business not found.</p>"
 
@@ -269,22 +474,39 @@ def _analyze_product(selection: str) -> str:
     <div id='sentiment-tab' style='padding:20px'>
         <h2>📊 {ps.product_title}</h2>
         <h4 style='color:var(--theme-muted,rgba(255,255,255,.68));margin-top:-8px'>
-            {_domain_map.get(ps.product_id, "")}
+            {_metadata_label(source_key, ps.product_id)}
         </h4>
         {card}
     </div>
     """
 
 
-def _compare_products(sel_a: str, sel_b: str) -> str:
+def _metadata_label(source: str, product_id: str) -> str:
+    metadata = _metadata_maps.get(source, {}).get(product_id, {})
+    if source == "amazon":
+        category = metadata.get("category", "")
+        subcategory = metadata.get("subcategory", "")
+        return " / ".join(part for part in (category, subcategory) if part)
+    return metadata.get("subcategory", _domain_maps.get(source, {}).get(product_id, ""))
+
+
+def _compare_products(sel_a: str, sel_b: str, source: str = "Yelp") -> str:
     """Render side-by-side comparison of two businesses."""
     if not sel_a or not sel_b:
-        return "<p style='color:var(--theme-red,#ff7369)'>Please select two businesses to compare.</p>"
+        return """
+        <div class='sent-card' style='border-left:4px solid var(--theme-amber,#dfab01)'>
+            <strong>Select two Yelp businesses first.</strong><br>
+            <span style='color:var(--theme-muted,#667085)'>
+                Choose Selection A and Selection B before comparing sentiment.
+            </span>
+        </div>
+        """
     if sel_a == sel_b:
         return "<p style='color:var(--theme-red,#ff7369)'>Please select two different businesses to compare.</p>"
 
-    ps_a = _get_or_analyze(sel_a)
-    ps_b = _get_or_analyze(sel_b)
+    source_key = _normalize_source(source)
+    ps_a = _get_or_analyze(sel_a, source_key)
+    ps_b = _get_or_analyze(sel_b, source_key)
     if ps_a is None or ps_b is None:
         missing = sel_a if ps_a is None else sel_b
         return f"<p style='color:var(--theme-red,#ff7369)'>Business not found: {missing}</p>"
@@ -358,14 +580,14 @@ def _compare_products(sel_a: str, sel_b: str) -> str:
             <div class='sent-col sent-col-a'>
                 <div class='sent-col-title'>📊 {ps_a.product_title}</div>
                 <div style='color:var(--theme-muted);font-size:.85em;margin-bottom:12px'>
-                    {_domain_map.get(ps_a.product_id, "")} &nbsp;|&nbsp; ⭐{ps_a.avg_rating:.1f} &nbsp;|&nbsp; {ps_a.total_reviews} reviews
+                    {_metadata_label(source_key, ps_a.product_id)} &nbsp;|&nbsp; ⭐{ps_a.avg_rating:.1f} &nbsp;|&nbsp; {ps_a.total_reviews} reviews
                 </div>
                 {card_a}
             </div>
             <div class='sent-col sent-col-b'>
                 <div class='sent-col-title'>📊 {ps_b.product_title}</div>
                 <div style='color:var(--theme-muted);font-size:.85em;margin-bottom:12px'>
-                    {_domain_map.get(ps_b.product_id, "")} &nbsp;|&nbsp; ⭐{ps_b.avg_rating:.1f} &nbsp;|&nbsp; {ps_b.total_reviews} reviews
+                    {_metadata_label(source_key, ps_b.product_id)} &nbsp;|&nbsp; ⭐{ps_b.avg_rating:.1f} &nbsp;|&nbsp; {ps_b.total_reviews} reviews
                 </div>
                 {card_b}
             </div>
@@ -374,16 +596,48 @@ def _compare_products(sel_a: str, sel_b: str) -> str:
     """
 
 
-def _init_dropdowns() -> tuple[gr.Dropdown, gr.Dropdown, gr.Dropdown]:
-    """Lazy-load domains & businesses. Called once on tab load."""
-    domain_choices = ["— All Domains —"] + _get_domain_choices()
-    business_choices = _filter_by_domain("")
-    dd_info = "Pick a category to filter — or browse all 1,000 businesses"
-    biz_info = "Type to search — businesses are filtered by your domain choice"
+def _dropdown_specs(source: str) -> tuple[dict, dict, dict, dict]:
+    """Return source-specific dropdown state without creating Gradio components."""
+    source_key = _normalize_source(source)
+    category_label = "— All Categories —" if source_key == "amazon" else "— All Business Types —"
+    category_choices = [category_label] + _get_category_choices(source_key)
+    subcategory_choices = ["— All Subcategories —"] + _get_subcategory_choices(source_key, None)
+    product_choices = _filter_products(source_key, "", "")
+    category_name = "2. Product Category" if source_key == "amazon" else "2. Business Type"
+    subcategory_name = "3. Product Subcategory"
+    cat_info = "Electronics review category" if source_key == "amazon" else "Restaurant and local business type"
+    sub_info = "Optional Electronics subcategory filter"
+    product_info = "Type to search within the selected review source"
+    product_a_label = "4. Amazon Product" if source_key == "amazon" else "4. Selection A"
     return (
-        gr.Dropdown(choices=domain_choices, value="— All Domains —", info=dd_info),
-        gr.Dropdown(choices=business_choices, info=biz_info),
-        gr.Dropdown(choices=business_choices, info=biz_info),
+        {"choices": category_choices, "value": category_label, "label": category_name, "info": cat_info},
+        {
+            "choices": subcategory_choices,
+            "value": "— All Subcategories —" if source_key == "amazon" else None,
+            "label": subcategory_name,
+            "interactive": source_key == "amazon",
+            "visible": source_key == "amazon",
+            "info": sub_info,
+        },
+        {"choices": product_choices, "value": None, "label": product_a_label, "info": product_info},
+        {
+            "choices": product_choices,
+            "value": None,
+            "label": "5. Selection B",
+            "info": "Yelp comparison only." if source_key == "amazon" else product_info,
+            "visible": source_key != "amazon",
+        },
+    )
+
+
+def _init_dropdowns(source: str) -> tuple[gr.Dropdown, gr.Dropdown, gr.Dropdown, gr.Dropdown]:
+    """Lazy-load dropdown choices for event updates."""
+    category, subcategory, product_a, product_b = _dropdown_specs(source)
+    return (
+        gr.Dropdown(**category),
+        gr.Dropdown(**subcategory),
+        gr.Dropdown(**product_a),
+        gr.Dropdown(**product_b),
     )
 
 
@@ -391,114 +645,227 @@ def render_sentiment_tab() -> gr.Blocks:
     """Build and return the Product Review Sentiment Analyzer Gradio tab."""
     with gr.Blocks(elem_id="sentiment-tab") as tab:
         gr.Markdown("""
-        # 🍽️ Business Review Sentiment Analyzer
-        Explore 1,000 businesses from real Yelp reviews. Pick a domain, then
-        select up to two businesses to compare sentiment side by side — no API keys, fully local.
+        # Review Sentiment Intelligence
+        Analyze Amazon Electronics product reviews by default, or switch to
+        Yelp-style local business reviews for side-by-side comparison.
         """)
 
-        # ── Domain selector (populated lazily on tab load) ──
-        domain_dd = gr.Dropdown(
-            choices=[],
-            label="1️⃣ Choose a Business Domain",
-            info="Click Load Businesses to populate choices.",
-            filterable=True,
-            elem_id="sent-domain-dropdown",
-        )
-
-        # ── Two business selectors side by side (populated lazily) ──
-        with gr.Row():
-            business_a_dd = gr.Dropdown(
-                choices=[],
-                label="2️⃣ Business A",
-                info="Click Load Businesses first.",
-                filterable=True,
-                scale=3,
-                elem_id="sent-business-a-dropdown",
-            )
-            business_b_dd = gr.Dropdown(
-                choices=[],
-                label="3️⃣ Business B",
-                info="Click Load Businesses first.",
-                filterable=True,
-                scale=3,
-                elem_id="sent-business-b-dropdown",
+        with gr.Group(elem_classes=["sent-control-panel"]):
+            gr.Markdown("""
+            <div class="sent-dataset-note">
+                Amazon uses a deployable 1,000-product Electronics review sample.
+                Yelp uses the existing local 1,000-business sample and supports comparison.
+            </div>
+            """)
+            dataset_dd = gr.Dropdown(
+                choices=["Yelp Style", "Amazon Style"],
+                value="Amazon Style",
+                label="1. Review Dataset",
+                info="Choose local business reviews or Amazon product reviews.",
             )
 
-        # ── Action buttons ──
-        load_btn = gr.Button("Load Businesses", variant="secondary")
-        with gr.Row():
-            analyze_a_btn = gr.Button("📊 Analyze A", variant="secondary", scale=1)
-            compare_btn = gr.Button("⚖️ Compare Both", variant="primary", scale=1)
-            analyze_b_btn = gr.Button("📊 Analyze B", variant="secondary", scale=1)
+            initial_category, initial_subcategory, initial_product_a, initial_product_b = _dropdown_specs("Amazon Style")
+
+            with gr.Row():
+                category_dd = gr.Dropdown(
+                    **initial_category,
+                    filterable=True,
+                    elem_id="sent-category-dropdown",
+                )
+                subcategory_dd = gr.Dropdown(
+                    **initial_subcategory,
+                    filterable=True,
+                    elem_id="sent-subcategory-dropdown",
+                )
+
+            with gr.Row():
+                business_a_dd = gr.Dropdown(
+                    **initial_product_a,
+                    filterable=True,
+                    scale=3,
+                    elem_id="sent-business-a-dropdown",
+                )
+                business_b_dd = gr.Dropdown(
+                    **initial_product_b,
+                    filterable=True,
+                    scale=3,
+                    elem_id="sent-business-b-dropdown",
+                )
+
+        with gr.Group(elem_classes=["sent-toolbar"]):
+            with gr.Row(elem_classes=["sent-toolbar-row"]):
+                analyze_a_btn = gr.Button(
+                    "Analyze Product",
+                    variant="primary",
+                    scale=0,
+                    min_width=172,
+                    elem_classes=["sent-action-btn"],
+                )
+                compare_btn = gr.Button(
+                    "Compare Yelp Businesses",
+                    variant="secondary",
+                    scale=0,
+                    min_width=236,
+                    visible=False,
+                    elem_classes=["sent-primary-action"],
+                )
+                analyze_b_btn = gr.Button(
+                    "Analyze B",
+                    variant="secondary",
+                    scale=0,
+                    min_width=148,
+                    visible=False,
+                    elem_classes=["sent-action-btn"],
+                )
+                load_btn = gr.Button(
+                    "Refresh Catalog",
+                    variant="secondary",
+                    scale=0,
+                    min_width=136,
+                    elem_classes=["sent-refresh-btn"],
+                )
 
         analyze_output = gr.HTML()
 
-        # ── Explicit init: avoid a page-load event that blocks tab navigation.
         load_btn.click(
             fn=_init_dropdowns,
-            outputs=[domain_dd, business_a_dd, business_b_dd],
+            inputs=[dataset_dd],
+            outputs=[category_dd, subcategory_dd, business_a_dd, business_b_dd],
             show_progress="minimal",
         )
 
-        # ── Cascading: domain change → filter both business dropdowns + clear both ──
-        def _on_domain_change(domain: str) -> tuple[gr.Dropdown, gr.Dropdown]:
-            if domain == "— All Domains —":
-                domain = ""
-            choices = _filter_by_domain(domain)
+        def _mode_updates(source: str) -> tuple[gr.Button, gr.Button, gr.Button]:
+            source_key = _normalize_source(source)
+            if source_key == "amazon":
+                return (
+                    gr.Button("Analyze Product", variant="primary", elem_classes=["sent-action-btn"], scale=0, min_width=172),
+                    gr.Button(visible=False, elem_classes=["sent-primary-action"], scale=0, min_width=236),
+                    gr.Button(visible=False, elem_classes=["sent-action-btn"], scale=0, min_width=148),
+                )
             return (
-                gr.Dropdown(choices=choices, value=None),
-                gr.Dropdown(choices=choices, value=None),
+                gr.Button("Analyze A", variant="secondary", elem_classes=["sent-action-btn"], scale=0, min_width=148),
+                gr.Button("Compare Yelp Businesses", variant="primary", visible=True, elem_classes=["sent-primary-action"], scale=0, min_width=236),
+                gr.Button("Analyze B", variant="secondary", visible=True, elem_classes=["sent-action-btn"], scale=0, min_width=148),
             )
 
-        domain_dd.change(
-            fn=_on_domain_change,
-            inputs=[domain_dd],
-            outputs=[business_a_dd, business_b_dd],
+        def _on_dataset_change(source: str) -> tuple[gr.Dropdown, gr.Dropdown, gr.Dropdown, gr.Dropdown, gr.Button, gr.Button, gr.Button, str]:
+            category, subcategory, product_a, product_b = _init_dropdowns(source)
+            analyze_a_mode, compare_mode, analyze_b_mode = _mode_updates(source)
+            source_key = _normalize_source(source)
+            label = "Amazon Electronics products" if source_key == "amazon" else "Yelp businesses"
+            return (
+                category,
+                subcategory,
+                product_a,
+                product_b,
+                analyze_a_mode,
+                compare_mode,
+                analyze_b_mode,
+                f"<div class='sent-card'><strong>{label} loaded.</strong> Use the filters above to narrow the catalog.</div>",
+            )
+
+        dataset_dd.change(
+            fn=_on_dataset_change,
+            inputs=[dataset_dd],
+            outputs=[
+                category_dd,
+                subcategory_dd,
+                business_a_dd,
+                business_b_dd,
+                analyze_a_btn,
+                compare_btn,
+                analyze_b_btn,
+                analyze_output,
+            ],
+            show_progress="minimal",
         )
 
-        # ── Analyze A on button click ──
+        def _on_category_change(source: str, category: str) -> tuple[gr.Dropdown, gr.Dropdown, gr.Dropdown]:
+            source_key = _normalize_source(source)
+            clean_category = "" if category in (None, "— All Categories —") else category
+            sub_choices = _get_subcategory_choices(source_key, clean_category)
+            products = _filter_products(source_key, category, "")
+            return (
+                gr.Dropdown(
+                    choices=["— All Subcategories —"] + sub_choices,
+                    value="— All Subcategories —" if source_key == "amazon" else None,
+                    label="3. Product Subcategory",
+                    interactive=source_key == "amazon",
+                    visible=source_key == "amazon",
+                    info="Optional Electronics subcategory filter",
+                ),
+                gr.Dropdown(choices=products, value=None),
+                gr.Dropdown(choices=products, value=None, visible=source_key != "amazon"),
+            )
+
+        category_dd.change(
+            fn=_on_category_change,
+            inputs=[dataset_dd, category_dd],
+            outputs=[subcategory_dd, business_a_dd, business_b_dd],
+            show_progress="minimal",
+        )
+
+        def _on_subcategory_change(source: str, category: str, subcategory: str) -> tuple[gr.Dropdown, gr.Dropdown]:
+            source_key = _normalize_source(source)
+            products = _filter_products(source_key, category, subcategory)
+            return (
+                gr.Dropdown(choices=products, value=None),
+                gr.Dropdown(choices=products, value=None, visible=source_key != "amazon"),
+            )
+
+        subcategory_dd.change(
+            fn=_on_subcategory_change,
+            inputs=[dataset_dd, category_dd, subcategory_dd],
+            outputs=[business_a_dd, business_b_dd],
+            show_progress="minimal",
+        )
+
         analyze_a_btn.click(
             fn=_analyze_product,
-            inputs=[business_a_dd],
+            inputs=[business_a_dd, dataset_dd],
             outputs=[analyze_output],
             show_progress="minimal",
         )
 
-        # ── Analyze A on dropdown selection ──
         business_a_dd.change(
-            fn=lambda: '<div class="sent-loading"><div class="sent-spinner"></div>⏳ Analyzing reviews with RoBERTa…<br><small>First inference may take a few seconds</small></div>',
+            fn=lambda selection: (
+                '<div class="sent-loading"><div class="sent-spinner"></div>Analyzing reviews…<br><small>First model inference may take a few seconds</small></div>'
+                if selection else ""
+            ),
+            inputs=[business_a_dd],
             outputs=[analyze_output],
         ).then(
             fn=_analyze_product,
-            inputs=[business_a_dd],
+            inputs=[business_a_dd, dataset_dd],
             outputs=[analyze_output],
         )
 
-        # ── Analyze B on button click ──
         analyze_b_btn.click(
             fn=_analyze_product,
-            inputs=[business_b_dd],
+            inputs=[business_b_dd, dataset_dd],
             outputs=[analyze_output],
             show_progress="minimal",
         )
 
-        # ── Analyze B on dropdown selection ──
         business_b_dd.change(
-            fn=lambda: '<div class="sent-loading"><div class="sent-spinner"></div>⏳ Analyzing reviews with RoBERTa…<br><small>First inference may take a few seconds</small></div>',
+            fn=lambda selection: (
+                '<div class="sent-loading"><div class="sent-spinner"></div>Analyzing reviews…<br><small>First model inference may take a few seconds</small></div>'
+                if selection else ""
+            ),
+            inputs=[business_b_dd],
             outputs=[analyze_output],
         ).then(
             fn=_analyze_product,
-            inputs=[business_b_dd],
+            inputs=[business_b_dd, dataset_dd],
             outputs=[analyze_output],
         )
 
-        # ── Compare both ──
         compare_btn.click(
-            fn=lambda: '<div class="sent-loading"><div class="sent-spinner"></div>⏳ Comparing businesses with RoBERTa…<br><small>First inference may take a few seconds</small></div>',
+            fn=lambda: '<div class="sent-loading"><div class="sent-spinner"></div>Comparing selections…<br><small>First model inference may take a few seconds</small></div>',
             outputs=[analyze_output],
         ).then(
             fn=_compare_products,
-            inputs=[business_a_dd, business_b_dd],
+            inputs=[business_a_dd, business_b_dd, dataset_dd],
             outputs=[analyze_output],
         )
 

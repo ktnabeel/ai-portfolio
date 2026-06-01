@@ -496,12 +496,13 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
     )
     proof_html = "\n".join(
         f"""<div class="proof-item">
-          <span class="proof-marker">{index:02d}</span>
+          <span class="proof-marker {marker['class']}" aria-label="{escape(marker['label'])}" title="{escape(marker['label'])}">{marker['icon']}</span>
           <strong>{escape(str(item.get('label', item.get('title', 'Proof'))))}</strong>
           <span>{escape(str(item.get('value', item.get('description', ''))))}</span>
         </div>"""
-        for index, item in enumerate(proof_items, start=1)
+        for item in proof_items
         if isinstance(item, dict)
+        for marker in [_proof_marker_for(str(item.get('label', item.get('title', 'Proof'))))]
     )
     proof_section = (
         f"""
@@ -575,7 +576,7 @@ def _render_project_grid(
           <h3>Real project entries are ready to be added.</h3>
           <p>This portfolio is intentionally empty until real AI projects are added.</p>
         </div>
-"""
+    """
 
     cards = "\n".join(
         _render_project_card(
@@ -589,6 +590,19 @@ def _render_project_grid(
         for index, project in enumerate(projects, start=1)
     )
     return f'<div class="project-list">{cards}</div>'
+
+
+def _proof_marker_for(label: str) -> dict[str, str]:
+    normalized = label.lower()
+    if "architecture" in normalized:
+        return {"icon": "⛓", "class": "proof-marker-architecture", "label": "Agent architecture"}
+    if "production" in normalized:
+        return {"icon": "🚀", "class": "proof-marker-production", "label": "Production wiring"}
+    if "reliability" in normalized:
+        return {"icon": "🛡", "class": "proof-marker-reliability", "label": "Reliability"}
+    if "domain" in normalized:
+        return {"icon": "🌐", "class": "proof-marker-domain", "label": "Domain range"}
+    return {"icon": "•", "class": "proof-marker-generic", "label": label}
 
 
 def _render_project_card(
@@ -1008,17 +1022,41 @@ h1, h2, h3, p { margin-top: 0; }
 }
 .proof-marker {
   grid-row: span 2;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
-  background: linear-gradient(160deg, #07142d, #14284c);
-  color: #9cc6ff;
-  border: 1px solid rgba(156, 198, 255, .28);
-  font-size: 11px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: 900;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.24),
+    0 10px 18px rgba(15,23,42,.10);
+}
+.proof-marker-architecture {
+  background: linear-gradient(160deg, rgba(37,99,235,.18), rgba(15,23,42,.92));
+  color: #8ac0ff;
+  border: 1px solid rgba(138,192,255,.28);
+}
+.proof-marker-production {
+  background: linear-gradient(160deg, rgba(255,122,24,.18), rgba(42,29,8,.92));
+  color: #ffbc80;
+  border: 1px solid rgba(255,188,128,.28);
+}
+.proof-marker-reliability {
+  background: linear-gradient(160deg, rgba(15,143,110,.18), rgba(6,35,31,.92));
+  color: #7fe2c0;
+  border: 1px solid rgba(127,226,192,.28);
+}
+.proof-marker-domain {
+  background: linear-gradient(160deg, rgba(124,183,255,.18), rgba(10,24,44,.92));
+  color: #c6e0ff;
+  border: 1px solid rgba(198,224,255,.28);
+}
+.proof-marker-generic {
+  background: linear-gradient(160deg, rgba(37,99,235,.14), rgba(15,23,42,.86));
+  color: #d6e6ff;
+  border: 1px solid rgba(214,230,255,.22);
 }
 .proof-item strong {
   min-width: 0;

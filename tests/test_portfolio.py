@@ -1043,6 +1043,20 @@ def test_project_tile_css_supports_hover_focus_and_mobile_details() -> None:
     assert "max-height: none" in html
 
 
+def test_proof_strip_uses_meaningful_icons() -> None:
+    """The proof strip uses semantic icon badges instead of numeric squares."""
+    html = render_page(PROJECT_TEMPLATES, mode="gradio")
+
+    assert "proof-marker-architecture" in html
+    assert "proof-marker-production" in html
+    assert "proof-marker-reliability" in html
+    assert "proof-marker-domain" in html
+    assert "⛓" in html
+    assert "🚀" in html
+    assert "🛡" in html
+    assert "🌐" in html
+
+
 def test_yaml_config_overrides_static_text(tmp_path: Path) -> None:
     config_path = tmp_path / "portfolio.yaml"
     config_path.write_text(
