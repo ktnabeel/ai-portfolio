@@ -79,6 +79,9 @@ class FearGreedData(BaseModel):
     one_month_ago: Optional[int] = None
     one_year_ago: Optional[int] = None
     timestamp: datetime = Field(default_factory=datetime.now)
+    raw_score: Optional[float] = None
+    source_url: str = ""
+    source_method: str = ""
 
 
 class WorldNewsItem(BaseModel):
