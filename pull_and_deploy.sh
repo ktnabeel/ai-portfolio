@@ -11,11 +11,11 @@ echo "--- Starting GitHub Pull & Deploy ---"
 # 1. Handle Repository
 if [ ! -d "$TARGET_DIR" ]; then
     echo "Cloning repository for the first time..."
-    git clone $REPO_URL $TARGET_DIR
-    cd $TARGET_DIR
+    git clone "$REPO_URL" "$TARGET_DIR"
+    cd "$TARGET_DIR"
 else
     echo "Updating existing repository..."
-    cd $TARGET_DIR
+    cd "$TARGET_DIR"
     git fetch origin
     # This ensures we match the remote exactly
     git reset --hard origin/$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5)
@@ -45,11 +45,16 @@ echo "Syncing dependencies using $UV_BIN..."
 "$UV_BIN" sync
 
 echo "Restarting application..."
-pkill -f "python app.py" || true
-mkdir -p logs
-nohup "$UV_BIN" run python app.py > logs/app.log 2>&1 &
+chmod +x ./start.sh
+UV_BIN="$UV_BIN" ./start.sh restart
 
 echo "------------------------------------------------"
 echo "Success! App is running."
-echo "Access at: http://$(curl -s ifconfig.me):7860"
+PORT="$("$UV_BIN" run python scripts/config_value.py server.port 2>/dev/null || echo "7860")"
+PUBLIC_IP="$(curl -s --max-time 5 ifconfig.me || true)"
+if [ -n "$PUBLIC_IP" ]; then
+    echo "Access at: http://${PUBLIC_IP}:${PORT}"
+else
+    echo "Local health URL: http://127.0.0.1:${PORT}"
+fi
 echo "------------------------------------------------"

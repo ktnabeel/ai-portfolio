@@ -9,18 +9,25 @@ PID_FILE="$(pwd)/.${APP_NAME}.pid"
 LOG_DIR="$(pwd)/logs"
 OUT_LOG="${LOG_DIR}/${APP_NAME}.out.log"
 ERR_LOG="${LOG_DIR}/${APP_NAME}.err.log"
+UV_BIN="${UV_BIN:-uv}"
 
 COMMAND="${1:-start}"
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
 # Require dependencies
-command -v uv >/dev/null 2>&1 || { echo "ERROR: uv is required but not installed. See https://docs.astral.sh/uv/" >&2; exit 1; }
+command -v "${UV_BIN}" >/dev/null 2>&1 || { echo "ERROR: uv is required but not found at '${UV_BIN}'. See https://docs.astral.sh/uv/" >&2; exit 1; }
 command -v curl >/dev/null 2>&1 || { echo "ERROR: curl is required but not installed." >&2; exit 1; }
 
-HOST="$(uv run python scripts/config_value.py server.host 2>/dev/null || echo "127.0.0.1")"
-PORT="$(uv run python scripts/config_value.py server.port 2>/dev/null || echo "7860")"
-URL="http://${HOST}:${PORT}"
+BIND_HOST="$("${UV_BIN}" run python scripts/config_value.py server.host 2>/dev/null || echo "127.0.0.1")"
+PORT="$("${UV_BIN}" run python scripts/config_value.py server.port 2>/dev/null || echo "7860")"
+if [ "${BIND_HOST}" = "0.0.0.0" ] || [ "${BIND_HOST}" = "::" ]; then
+    HEALTH_HOST="127.0.0.1"
+else
+    HEALTH_HOST="${BIND_HOST}"
+fi
+URL="http://${HEALTH_HOST}:${PORT}"
+HEALTH_URL="http://${HEALTH_HOST}:${PORT}"
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -96,7 +103,7 @@ _wait_for_listen() {
 
     while [ "$(date +%s)" -lt "${deadline}" ]; do
         # Verify the app is actually serving HTTP (not just listening on port)
-        if curl -s -o /dev/null -w '%{http_code}' --max-time 2 --connect-timeout 2 "${URL}" 2>/dev/null | grep -q '^[23]'; then
+        if curl -s -o /dev/null -w '%{http_code}' --max-time 2 --connect-timeout 2 "${HEALTH_URL}" 2>/dev/null | grep -q '^[23]'; then
             return 0
         fi
         # Check if the process is still alive
@@ -121,7 +128,7 @@ case "${COMMAND}" in
         mkdir -p "${LOG_DIR}"
 
         echo "Starting ${APP_NAME}..."
-        nohup uv run python app.py >"${OUT_LOG}" 2>"${ERR_LOG}" &
+        nohup "${UV_BIN}" run python app.py >"${OUT_LOG}" 2>"${ERR_LOG}" &
         started_pid=$!
         echo "${started_pid}" >"${PID_FILE}"
 
@@ -132,7 +139,7 @@ case "${COMMAND}" in
             echo "  ${OUT_LOG}"
             echo "  ${ERR_LOG}"
         else
-            echo "ERROR: Timed out waiting for ${APP_NAME} to listen on ${URL}" >&2
+            echo "ERROR: Timed out waiting for ${APP_NAME} to listen on ${HEALTH_URL}" >&2
             exit 1
         fi
         ;;
