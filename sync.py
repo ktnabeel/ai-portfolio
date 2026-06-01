@@ -72,7 +72,7 @@ def _ensure_paramiko() -> None:
 
 def _ssh_exec(ssh, cmd: str, sudo_password: str | None = None) -> tuple[int, str, str]:
     """Execute a remote command and return exit status, stdout, stderr."""
-    stdin, stdout, stderr = ssh.exec_command(cmd, get_pty=bool(sudo_password))
+    stdin, stdout, stderr = ssh.exec_command(cmd)
     if sudo_password:
         stdin.write(sudo_password + "\n")
         stdin.flush()
@@ -84,7 +84,7 @@ def _ssh_exec(ssh, cmd: str, sudo_password: str | None = None) -> tuple[int, str
 def _cleanup_remote_port(ssh, password: str) -> None:
     """Free the app port before deploy, including stale root-owned listeners."""
     cleanup_cmd = (
-        "sudo -S sh -c '"
+        "sudo -S -p '' sh -c '"
         f"for pid in $(ss -tlnp 2>/dev/null | grep :{REMOTE_PORT} | "
         "sed -n \"s/.*pid=\\([0-9][0-9]*\\).*/\\1/p\" | sort -u); do "
         "echo stopping-listener:$pid; kill $pid 2>/dev/null || true; sleep 1; "
@@ -93,10 +93,10 @@ def _cleanup_remote_port(ssh, password: str) -> None:
     )
     status, out, err = _ssh_exec(ssh, cleanup_cmd, sudo_password=password)
     for line in out.splitlines():
-        if line.strip() and "[sudo]" not in line:
+        if line.strip() and "[sudo]" not in line and password not in line:
             safe_print(f"REMOTE: {line.strip()}")
     for line in err.splitlines():
-        if line.strip() and "[sudo]" not in line:
+        if line.strip() and "[sudo]" not in line and password not in line:
             safe_print(f"REMOTE ERR: {line.strip()}")
     if status != 0:
         safe_print("REMOTE ERR: Could not clean up remote port before deploy.")
