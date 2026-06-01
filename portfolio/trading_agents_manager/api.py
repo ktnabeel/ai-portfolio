@@ -56,7 +56,13 @@ async def analyze(request: AnalysisRequest) -> AnalysisResponse:
     Orchestrates the complete pipeline:
     Security → Sentiment → Regime → Decision → Execution
     """
-    return _manager.analyze(request.symbol, request.date)
+    return _manager.analyze(
+        request.symbol,
+        request.date,
+        llm_provider=request.llm_provider,
+        llm_model=request.llm_model,
+        api_key=request.api_key,
+    )
 
 
 @app.get("/api/v1/analysis/{analysis_id}", response_model=AnalysisResponse)

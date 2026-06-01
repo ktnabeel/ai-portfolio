@@ -1,7 +1,8 @@
 """Unit tests verifying all tabs in app.py render without errors.
 
 Covers: Portfolio, Portfolio Manager, Insurance Underwriting, Claim Processing,
-Movie Recommendations, Sentiment Analyzer, Financial Agent, and Trading Desk.
+Movie Recommendations, Sentiment Analyzer, Resume Matcher, Financial Agent,
+and Trading Desk.
 """
 
 from pathlib import Path
@@ -13,6 +14,7 @@ from portfolio.financial import render_financial_tab
 from portfolio.claim_processing.render import render_claim_tab
 from portfolio.movie_recommender import render_movie_tab
 from portfolio.sentiment import render_sentiment_tab
+from portfolio.resume_matcher import render_resume_matcher_tab
 from portfolio.models import Project
 from portfolio.render import render_page
 from portfolio.trading_agents_manager import render_trading_agents_tab
@@ -89,8 +91,11 @@ def test_theme_toggle_is_in_right_top_bar_group(tmp_path: Path) -> None:
     assert '<div class="top-bar-right">' in html
     right_group = html.split('<div class="top-bar-right">', 1)[1].split("</div>", 1)[0]
     left_group = html.split('<div class="top-bar-left">', 1)[1].split("</div>", 1)[0]
-    assert 'class="theme-toggle"' in right_group
+    assert 'class="theme-toggle"' not in right_group
     assert 'class="theme-toggle"' not in left_group
+    assert "Toggle Theme" not in right_group
+    assert "theme-icon-light" not in right_group
+    assert "theme-icon-dark" not in right_group
     assert "Contact" in left_group
 
 
@@ -119,6 +124,13 @@ def test_sentiment_tab_renders() -> None:
     """Sentiment Analyzer tab renders without errors."""
     with gr.Blocks():
         tab = render_sentiment_tab()
+        assert isinstance(tab, gr.Blocks)
+
+
+def test_resume_matcher_tab_renders() -> None:
+    """Resume Matcher tab renders without errors."""
+    with gr.Blocks():
+        tab = render_resume_matcher_tab()
         assert isinstance(tab, gr.Blocks)
 
 
@@ -163,12 +175,14 @@ def test_all_tab_css_exports_are_strings() -> None:
     from portfolio.movie_recommender import MOVIE_CSS
     from portfolio.sentiment import SENTIMENT_CSS
     from portfolio.trading.ui import TRADING_CSS
+    from portfolio.resume_matcher import RESUME_MATCHER_CSS
 
     for name, css in [
         ("DARK_CSS", DARK_CSS),
         ("CLAIM_DARK_CSS", CLAIM_DARK_CSS),
         ("MOVIE_CSS", MOVIE_CSS),
         ("SENTIMENT_CSS", SENTIMENT_CSS),
+        ("RESUME_MATCHER_CSS", RESUME_MATCHER_CSS),
         ("TRADING_CSS", TRADING_CSS),
     ]:
         assert isinstance(css, str), f"{name} is not a string"
@@ -204,10 +218,11 @@ def test_all_render_functions_are_callable() -> None:
         ("Claim Processing", render_claim_tab),
         ("Movie Recommendations", render_movie_tab),
         ("Sentiment Analyzer", render_sentiment_tab),
+        ("Resume Matcher", render_resume_matcher_tab),
         ("Insurance Underwriting", render_underwriting_tab),
         ("Trading Desk", render_trading_tab),
         ("Portfolio Manager", render_trading_agents_tab),
     ]
-    assert len(tabs) == 8, "Expected exactly 8 tabs"
+    assert len(tabs) == 9, "Expected exactly 9 tabs"
     for name, fn in tabs:
         assert callable(fn), f"{name} render function is not callable"

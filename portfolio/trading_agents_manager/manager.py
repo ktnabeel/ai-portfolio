@@ -7,6 +7,9 @@ Orchestrates the full multi-agent pipeline:
 from __future__ import annotations
 
 import uuid
+import os
+import inspect
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Optional
 
@@ -43,7 +46,14 @@ class PortfolioManager:
         """
         return self._analyses.get(analysis_id)
 
-    def analyze(self, symbol: str, date: Optional[str] = None) -> AnalysisResponse:
+    def analyze(
+        self,
+        symbol: str,
+        date: Optional[str] = None,
+        llm_provider: str = "openai",
+        llm_model: str = "",
+        api_key: Optional[str] = None,
+    ) -> AnalysisResponse:
         """Run a full multi-agent analysis and return structured results.
 
         Args:
@@ -67,7 +77,14 @@ class PortfolioManager:
         }
 
         try:
-            response = self._run_pipeline(analysis_id, symbol, analysis_date)
+            response = self._run_pipeline(
+                analysis_id,
+                symbol,
+                analysis_date,
+                llm_provider=llm_provider,
+                llm_model=llm_model,
+                api_key=api_key,
+            )
             self._analyses[analysis_id]["status"] = AnalysisStatus.COMPLETE
             self._analyses[analysis_id]["completed_at"] = datetime.now()
             self._analyses[analysis_id]["response"] = response
@@ -88,6 +105,9 @@ class PortfolioManager:
         analysis_id: str,
         symbol: str,
         date: str,
+        llm_provider: str = "openai",
+        llm_model: str = "",
+        api_key: Optional[str] = None,
     ) -> AnalysisResponse:
         """Execute the TradingAgents graph and collect structured results.
 
@@ -103,7 +123,10 @@ class PortfolioManager:
             from tradingagents.graph import TradingAgentsGraph
 
             graph = TradingAgentsGraph()
-            state = graph.propagate(symbol, date)
+            provider = (llm_provider or "openai").strip().lower()
+            model = (llm_model or "").strip()
+            key = (api_key or "").strip()
+            state = self._run_graph_with_llm(graph, symbol, date, provider, model, key)
 
             # Map graph output into structured agent cards
             agent_cards = self._extract_agent_cards(state, symbol)
@@ -124,6 +147,55 @@ class PortfolioManager:
             execution_log=execution_log,
             completed_at=datetime.now(),
         )
+
+    @staticmethod
+    @contextmanager
+    def _provider_env_overlay(provider: str, api_key: str):
+        env_var = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "nvidia": "NVIDIA_API_KEY",
+        }.get(provider, "OPENAI_API_KEY")
+        previous = os.environ.get(env_var)
+        try:
+            os.environ[env_var] = api_key
+            yield
+        finally:
+            if previous is None:
+                os.environ.pop(env_var, None)
+            else:
+                os.environ[env_var] = previous
+
+    def _run_graph_with_llm(
+        self,
+        graph: Any,
+        symbol: str,
+        date: str,
+        provider: str,
+        model: str,
+        api_key: str,
+    ) -> dict:
+        propagate = graph.propagate
+        kwargs = {"symbol": symbol, "date": date}
+        sig = inspect.signature(propagate)
+        supported = set(sig.parameters.keys())
+        if "llm_provider" in supported:
+            kwargs["llm_provider"] = provider
+        if "llm_model" in supported:
+            kwargs["llm_model"] = model
+        if "api_key" in supported:
+            kwargs["api_key"] = api_key
+        elif "openai_api_key" in supported:
+            kwargs["openai_api_key"] = api_key
+
+        direct_expected = {"llm_provider", "llm_model"} & supported
+        if direct_expected:
+            return propagate(**kwargs)
+
+        if api_key:
+            with self._provider_env_overlay(provider, api_key):
+                return propagate(symbol, date)
+        return propagate(symbol, date)
 
     # ── Extraction helpers ──────────────────────────────────────────────
 

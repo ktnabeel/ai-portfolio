@@ -31,9 +31,9 @@ class TradingState(TypedDict):
 
     # Input
     symbol: str  # User-provided stock symbol
-    llm_provider: str  # "openai" or "anthropic"
+    llm_provider: str  # "openai", "anthropic", or "nvidia"
     llm_model: str  # e.g. "gpt-4o", "claude-sonnet-4-20250514"
-    openai_api_key: str  # User-provided API key (empty = use env var)
+    openai_api_key: str  # Generic user-provided API key (empty = use provider env var)
 
     # Agent 1: Security Identification
     security: Optional[SecurityInfo]

@@ -6,6 +6,7 @@ import gradio as gr
 
 from .manager import PortfolioManager
 from .models import AgentCard, AnalysisResponse, PortfolioDecision
+from ..trading._llm import PROVIDER_MODELS, get_default_model
 
 # ── CSS Theme Variables ──────────────────────────────────────────────────
 
@@ -105,7 +106,26 @@ def _render_decision(decision: PortfolioDecision) -> str:
 _manager = PortfolioManager()
 
 
-def _run_analysis(symbol: str) -> tuple[str, str, str]:
+def _model_choices_for(provider: str) -> list[tuple[str, str]]:
+    models = PROVIDER_MODELS.get(provider, {})
+    return [(desc, model_id) for model_id, desc in models.items()]
+
+
+def _on_provider_change(provider: str) -> gr.Dropdown:
+    provider_key = provider.lower()
+    return gr.Dropdown(
+        choices=_model_choices_for(provider_key),
+        value=get_default_model(provider_key),
+        interactive=True,
+    )
+
+
+def _run_analysis(
+    symbol: str,
+    llm_provider: str,
+    llm_model: str,
+    api_key: str,
+) -> tuple[str, str, str]:
     """Run analysis and return decision HTML, agent cards HTML, and log HTML."""
     if not symbol or not symbol.strip():
         return (
@@ -114,7 +134,12 @@ def _run_analysis(symbol: str) -> tuple[str, str, str]:
             "",
         )
 
-    result = _manager.analyze(symbol.strip().upper())
+    result = _manager.analyze(
+        symbol.strip().upper(),
+        llm_provider=llm_provider.lower(),
+        llm_model=llm_model,
+        api_key=api_key.strip() or None,
+    )
 
     # Decision
     decision_html = _render_decision(result.decision) if result.decision else (
@@ -150,20 +175,37 @@ def render_trading_agents_tab() -> None:
                 <h1>TradingAgents Portfolio Manager</h1>
                 <p>Multi-agent trading analysis powered by <b>LangGraph</b></p>
             </div>
-            <span class="app-window-badge">Deterministic</span>
+            <span class="app-window-badge">Configurable</span>
         </div>""")
 
         with gr.Row():
             with gr.Column(scale=1, min_width=340):
-                # ── Deterministic model note ──────────────────────────
+                # ── LLM model note ────────────────────────────────────
                 gr.Markdown(f"""
                 <div style="background:{TA_CARD}; border:1px solid {TA_BORDER}; border-radius:10px; padding:16px; margin-bottom:16px;">
-                    <div style="color:{TA_GREEN}; font-weight:700; margin-bottom:6px;">🧠 Deterministic Model</div>
+                    <div style="color:{TA_GREEN}; font-weight:700; margin-bottom:6px;">🧠 LLM Configuration</div>
                     <div style="color:{TA_SECONDARY}; font-size:0.9em; line-height:1.5;">
-                    This tab uses a fully deterministic multi-agent pipeline with no API keys required.<br>
-                    All analysis runs locally — no external LLM calls, no token costs.
+                    Choose a provider/model and optionally enter a session API key.<br>
+                    If no key is provided, the manager falls back to local environment variables.
                     </div>
                 </div>""")
+                provider_input = gr.Dropdown(
+                    label="Provider",
+                    choices=[("OpenAI", "openai"), ("Anthropic", "anthropic"), ("NVIDIA", "nvidia")],
+                    value="openai",
+                    interactive=True,
+                )
+                model_input = gr.Dropdown(
+                    label="Model",
+                    choices=_model_choices_for("openai"),
+                    value=get_default_model("openai"),
+                    interactive=True,
+                )
+                api_key_input = gr.Textbox(
+                    label="API Key (Optional)",
+                    type="password",
+                    placeholder="Provider key for this session only (never stored)",
+                )
 
                 gr.Markdown("### 🎯 Analysis Target")
                 symbol_input = gr.Textbox(
@@ -206,8 +248,13 @@ def render_trading_agents_tab() -> None:
         # Wire up
         run_btn.click(
             fn=_run_analysis,
-            inputs=[symbol_input],
+            inputs=[symbol_input, provider_input, model_input, api_key_input],
             outputs=[decision_output, cards_output, log_output],
+        )
+        provider_input.change(
+            fn=_on_provider_change,
+            inputs=[provider_input],
+            outputs=[model_input],
         )
 
 

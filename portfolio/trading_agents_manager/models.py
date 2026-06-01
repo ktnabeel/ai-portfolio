@@ -51,6 +51,20 @@ class AnalysisRequest(BaseModel):
         description="Analyst types to include: market, social, news, fundamentals. Defaults to all.",
         examples=[["market", "news", "fundamentals"]],
     )
+    llm_provider: str = Field(
+        default="openai",
+        description="LLM provider: openai, anthropic, or nvidia.",
+        examples=["nvidia"],
+    )
+    llm_model: str = Field(
+        default="",
+        description="Provider model ID. Empty uses provider default.",
+        examples=["nvidia/llama-3.1-nemotron-70b-instruct"],
+    )
+    api_key: Optional[str] = Field(
+        default=None,
+        description="Optional session-only API key for the selected provider.",
+    )
 
 
 class AgentCard(BaseModel):

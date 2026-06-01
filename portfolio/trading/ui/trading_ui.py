@@ -4,7 +4,7 @@ Full-featured trading desk with:
 - Workflow-step layout: Configure → Analyze → Review → Account
 - Deterministic mode when no API key is provided (rule-based agents)
 - MCP paper-trading connectivity display
-- Provider/model selection (OpenAI / Anthropic)
+- Provider/model selection (OpenAI / Anthropic / NVIDIA)
 - Human-in-the-loop approval before trade execution
 - LangGraph-style flow diagram showing agent decisions
 - Simulated account positions, balances, and P&L
@@ -1192,7 +1192,11 @@ def _is_deterministic(api_key: str, provider: str) -> bool:
     """Check whether the workflow will run in deterministic (no-LLM) mode."""
     if api_key.strip():
         return False
-    env_var = "OPENAI_API_KEY" if provider.lower() == "openai" else "ANTHROPIC_API_KEY"
+    env_var = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "nvidia": "NVIDIA_API_KEY",
+    }.get(provider.lower(), "OPENAI_API_KEY")
     return not os.environ.get(env_var, "")
 
 
@@ -1752,6 +1756,7 @@ _API_KEY_NOTICE = """<div style="background:{card}; border:1px solid {border}; b
 This tab uses LLM agents that need an API key.<br>
 <b>OpenAI:</b> Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" style="color:{accent};">platform.openai.com/api-keys</a><br>
 <b>Anthropic:</b> Get yours at <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:{accent};">console.anthropic.com/settings/keys</a><br><br>
+<b>NVIDIA:</b> Get yours at <a href="https://build.nvidia.com/" target="_blank" style="color:{accent};">build.nvidia.com</a><br><br>
 Your key is used only for this session and <b>never stored</b>. Leave blank to use system environment variables.
 </div>
 </div>""".format(card=CARD, border=BORDER, accent=ACCENT, secondary=SECONDARY)
@@ -1785,7 +1790,7 @@ def render_trading_tab() -> None:
                 gr.Markdown(f"### ⚙️ LLM Configuration")
                 provider_input = gr.Dropdown(
                     label="Provider",
-                    choices=[("OpenAI", "openai"), ("Anthropic", "anthropic")],
+                    choices=[("OpenAI", "openai"), ("Anthropic", "anthropic"), ("NVIDIA", "nvidia")],
                     value="openai", interactive=True,
                 )
                 model_input = gr.Dropdown(
@@ -1795,7 +1800,7 @@ def render_trading_tab() -> None:
                 )
                 api_key_input = gr.Textbox(
                     label="API Key",
-                    placeholder="sk-... or sk-ant-... (leave empty for env var)",
+                    placeholder="Provider key (OpenAI / Anthropic / NVIDIA). Leave empty for env var.",
                     type="password",
                     info="Used only for this session — never stored.",
                 )

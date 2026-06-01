@@ -56,13 +56,17 @@ def _make_llm(state: TradingState) -> "BaseChatModel | None":
     model = state.get("llm_model", "") or None
     api_key = state.get("openai_api_key", "") or None
 
-    if provider not in ("openai", "anthropic"):
+    if provider not in ("openai", "anthropic", "nvidia"):
         return None
 
     # Resolve API key: user-provided → env var → None (deterministic)
     effective_key = api_key.strip() if api_key else ""
     if not effective_key:
-        env_var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+        env_var = {
+            "openai": "OPENAI_API_KEY",
+            "anthropic": "ANTHROPIC_API_KEY",
+            "nvidia": "NVIDIA_API_KEY",
+        }[provider]
         effective_key = os.environ.get(env_var, "")
 
     if not effective_key:
@@ -80,7 +84,11 @@ def _is_deterministic_mode(state: TradingState) -> bool:
     api_key = (state.get("openai_api_key", "") or "").strip()
     if api_key:
         return False
-    env_var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
+    env_var = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+        "nvidia": "NVIDIA_API_KEY",
+    }.get(provider, "OPENAI_API_KEY")
     return not os.environ.get(env_var, "")
 
 
@@ -407,7 +415,7 @@ def run_trading_workflow(
 
     Args:
         symbol: Stock ticker symbol (e.g., 'AAPL').
-        llm_provider: ``"openai"`` or ``"anthropic"``.
+        llm_provider: ``"openai"``, ``"anthropic"``, or ``"nvidia"``.
         llm_model: Model name (e.g. ``"gpt-4o"``, ``"claude-sonnet-4-20250514"``).
         openai_api_key: User-provided API key (empty → env var fallback).
         user_approved: Whether the user has approved the trade.

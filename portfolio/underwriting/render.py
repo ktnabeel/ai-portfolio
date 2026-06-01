@@ -8,11 +8,12 @@ from .models import UnderwritingDecision, RiskLevel
 UNDERWRITING_CSS = """
 #underwriting-tab {
     background:
-        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.92)),
+        radial-gradient(circle at top left, rgba(37,99,235,.08), transparent 32%),
+        linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,255,255,.96)),
         var(--theme-panel, #ffffff);
-    border: 1px solid var(--theme-line, #d9e2ec);
-    border-radius: 18px;
-    box-shadow: 0 24px 70px var(--theme-shadow, rgba(16,24,40,.08));
+    border: 1px solid rgba(217,226,236,.9);
+    border-radius: 22px;
+    box-shadow: 0 24px 70px rgba(16,24,40,.10);
     color: var(--theme-ink, rgba(255,255,255,.92));
     font-family: 'Segoe UI', system-ui, sans-serif;
     padding: 20px;
@@ -48,26 +49,97 @@ UNDERWRITING_CSS = """
     font-size: 1.3em;
 }
 .uw-metric-card {
-    background: var(--theme-panel, #373c3f);
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
-    border-radius: 14px;
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.96), rgba(248,250,252,.88)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid rgba(199,213,232,.86);
+    border-radius: 16px;
     padding: 16px;
-    margin: 10px 0;
-    box-shadow: 0 16px 40px var(--theme-shadow, rgba(16,24,40,.08));
+    margin: 0 0 12px;
+    box-shadow: 0 12px 34px rgba(16,24,40,.08);
 }
 .uw-decision-card {
-    background: linear-gradient(135deg, var(--theme-panel, #373c3f), var(--theme-surface, #454b4e));
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
+    background:
+        linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.9)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid rgba(199,213,232,.9);
     border-left: 4px solid var(--theme-blue, #1ca0f1);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 20px;
-    margin: 14px 0;
-    box-shadow: 0 18px 48px var(--theme-shadow, rgba(16,24,40,.08));
+    margin: 0 0 14px;
+    box-shadow: 0 18px 46px rgba(16,24,40,.10);
 }
 .uw-decision-card.approve { border-left-color: var(--theme-green, #37c78a); }
 .uw-decision-card.decline { border-left-color: var(--theme-red, #ff7369); }
 .uw-decision-card.refer { border-left-color: var(--theme-amber, #dfab01); }
 .uw-decision-card.request { border-left-color: var(--theme-blue, #1ca0f1); }
+.uw-single-layout,
+.uw-assessment-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 0.92fr);
+    gap: 24px;
+    align-items: start;
+}
+.uw-input-panel,
+.uw-output-panel,
+.uw-sample-panel {
+    background:
+        linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.82)),
+        var(--theme-panel, #ffffff);
+    border: 1px solid rgba(199,213,232,.86);
+    border-radius: 18px;
+    padding: 20px;
+    box-shadow:
+        0 26px 70px rgba(16,24,40,.10),
+        inset 0 1px 0 rgba(255,255,255,.9);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+.uw-output-panel {
+    min-height: 460px;
+    overflow: hidden;
+}
+.uw-output-placeholder {
+    min-height: 360px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed var(--theme-line, #d9e2ec);
+    border-radius: 12px;
+    color: var(--theme-muted, #667085);
+    text-align: center;
+    padding: 24px;
+}
+.uw-result-left,
+.uw-result-right {
+    min-width: 0;
+}
+.uw-result-right {
+    min-width: 0;
+}
+.uw-output-panel .uw-assessment-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+.uw-output-panel .uw-result-right {
+    order: -1;
+    position: static;
+}
+.uw-output-panel .uw-result-left {
+    display: grid;
+    gap: 14px;
+}
+.uw-assessment-result h2 {
+    margin-top: 0;
+}
+.uw-assessment-result h3 {
+    margin: 8px 0 10px;
+}
+.uw-result-left h3,
+.uw-result-right h3 {
+    color: var(--theme-ink, #101828) !important;
+    font-size: 1.02em;
+}
 .risk-low { color: var(--theme-green, #37c78a); }
 .risk-moderate { color: var(--theme-amber, #dfab01); }
 .risk-high { color: var(--theme-orange, #ff9a56); }
@@ -75,17 +147,23 @@ UNDERWRITING_CSS = """
 .uw-extracted-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: fixed;
     margin: 8px 0;
 }
 .uw-extracted-table td {
-    padding: 6px 12px 6px 0;
+    border: none;
+    border-bottom: 1px solid var(--theme-line, #d9e2ec);
+    padding: 9px 12px 9px 0;
     vertical-align: top;
+    overflow-wrap: anywhere;
+}
+.uw-extracted-table tr:last-child td {
+    border-bottom: none;
 }
 .uw-extracted-table td:first-child {
     color: var(--theme-muted, rgba(255,255,255,.68));
     font-weight: 600;
-    white-space: nowrap;
-    width: 130px;
+    width: 145px;
 }
 .uw-risk-factor {
     border-top: 1px solid var(--theme-line, rgba(255,255,255,.14));
@@ -105,10 +183,10 @@ UNDERWRITING_CSS = """
 .uw-risk-cat-Lifestyle { background: rgba(28,160,241,0.15); color: var(--theme-blue, #1ca0f1); }
 .uw-risk-cat-Financial { background: rgba(55,199,138,0.15); color: var(--theme-green, #37c78a); }
 .uw-reasoning {
-    background: var(--theme-surface, #454b4e);
-    border: 1px solid var(--theme-line, rgba(255,255,255,.14));
-    border-radius: 12px;
-    padding: 14px 18px;
+    background: rgba(248,250,252,.86);
+    border: 1px solid rgba(199,213,232,.9);
+    border-radius: 16px;
+    padding: 16px 18px;
     font-family: 'Consolas', 'Fira Code', monospace;
     font-size: 0.88em;
     color: var(--theme-muted, rgba(255,255,255,.68));
@@ -134,7 +212,7 @@ UNDERWRITING_CSS = """
     margin: 8px 0;
 }
 .uw-policy-item {
-    background: var(--theme-surface, #454b4e);
+    background: rgba(248,250,252,.86);
     border-radius: 12px;
     padding: 10px 14px;
 }
@@ -149,7 +227,27 @@ UNDERWRITING_CSS = """
     font-weight: 650;
     margin-top: 2px;
 }
+@media (max-width: 980px) {
+    .uw-single-layout,
+    .uw-assessment-layout {
+        grid-template-columns: 1fr;
+    }
+    .uw-result-right {
+        position: static;
+    }
+}
 """
+
+SAMPLE_APPLICATION = """Applicant: Sarah Chen
+Application: APP-2024-0842
+Age: 42. Occupation: Commercial airline pilot.
+Annual income: $180,000. Seeking $2,000,000 term life coverage.
+
+Medical: Mild hypertension controlled with medication. No other conditions. Non-smoker. Regular exercise.
+
+Lifestyle: Enjoys scuba diving and rock climbing on weekends. Drinks socially. No drug use.
+
+Financial: Two dependents (children ages 8 and 11). Mortgage of $450,000 remaining. No other major debts."""
 
 DECISION_CLASSES = {
     "Approve": "uw-result-approve",
@@ -273,43 +371,49 @@ def _run_underwriting(application_text: str) -> str:
     ring_color = _score_ring_color(result.risk_score)
 
     html = f"""
-    <div id='underwriting-tab' style='padding:20px'>
+    <div class='uw-assessment-result'>
         <h2>{icon} Underwriting Assessment</h2>
 
-        <div class='uw-decision-card {card_cls}'>
-            <div style='display:flex;align-items:center;gap:16px;flex-wrap:wrap'>
-                <div class='uw-score-ring' style='border-color:{ring_color};color:{ring_color}'>
-                    {result.risk_score:.0f}
+        <div class='uw-assessment-layout'>
+            <div class='uw-result-left'>
+                <h3>Extracted Details</h3>
+                <div class='uw-metric-card'>
+                    <table class='uw-extracted-table'>
+                        {extracted_rows}
+                    </table>
                 </div>
-                <div>
-                    <div style='font-size:1.15em;font-weight:700;margin-bottom:4px'>
-                        <span class='{decision_cls}'>{result.decision.value}</span>
-                        &nbsp;| Risk: <span class='{risk_cls}'>{result.overall_risk.value}</span>
-                    </div>
-                    <p style='margin:0;color:var(--theme-muted);line-height:1.5'>{result.recommendation}</p>
+
+                <h3>Risk Factors ({len(result.risk_factors)})</h3>
+                <div class='uw-metric-card'>
+                    {risk_factors_html}
+                </div>
+
+                <h3>Policy Context</h3>
+                <div class='uw-metric-card'>
+                    {policy_html}
                 </div>
             </div>
-        </div>
 
-        <h3>Extracted Details</h3>
-        <div class='uw-metric-card'>
-            <table class='uw-extracted-table'>
-                {extracted_rows}
-            </table>
-        </div>
+            <div class='uw-result-right'>
+                <h3>Decision Reasoning</h3>
+                <div class='uw-decision-card {card_cls}'>
+                    <div style='display:flex;align-items:center;gap:16px;flex-wrap:wrap'>
+                        <div class='uw-score-ring' style='border-color:{ring_color};color:{ring_color}'>
+                            {result.risk_score:.0f}
+                        </div>
+                        <div>
+                            <div style='font-size:1.15em;font-weight:700;margin-bottom:4px'>
+                                <span class='{decision_cls}'>{result.decision.value}</span>
+                                &nbsp;| Risk: <span class='{risk_cls}'>{result.overall_risk.value}</span>
+                            </div>
+                            <p style='margin:0;color:var(--theme-muted);line-height:1.5'>{result.recommendation}</p>
+                        </div>
+                    </div>
+                </div>
 
-        <h3>Risk Factors ({len(result.risk_factors)})</h3>
-        <div class='uw-metric-card'>
-            {risk_factors_html}
+                <div class='uw-reasoning'>{result.reasoning}</div>
+            </div>
         </div>
-
-        <h3>Policy Context</h3>
-        <div class='uw-metric-card'>
-            {policy_html}
-        </div>
-
-        <h3>Reasoning Chain</h3>
-        <div class='uw-reasoning'>{result.reasoning}</div>
     </div>
     """
     return html
@@ -395,29 +499,35 @@ def render_underwriting_tab() -> gr.Blocks:
                 details, scan for risk factors across health/occupation/lifestyle/financial
                 dimensions, build policy context, and generate a decision with full reasoning.
                 """)
-                app_input = gr.Textbox(
-                    label="Application Details",
-                    placeholder=(
-                        "Applicant: Sarah Chen\n"
-                        "Application: APP-2024-0842\n"
-                        "Age: 42. Occupation: Commercial airline pilot.\n"
-                        "Annual income: $180,000. Seeking $2,000,000 term life coverage.\n\n"
-                        "Medical: Mild hypertension controlled with medication. "
-                        "No other conditions. Non-smoker. Regular exercise.\n\n"
-                        "Lifestyle: Enjoys scuba diving and rock climbing on weekends. "
-                        "Drinks socially. No drug use.\n\n"
-                        "Financial: Two dependents (children ages 8 and 11). "
-                        "Mortgage of $450,000 remaining. No other major debts."
-                    ),
-                    lines=12,
-                )
-                process_btn = gr.Button("🔍 Run Underwriting Assessment", variant="primary")
-                single_output = gr.HTML()
+                with gr.Row(elem_classes=["uw-single-layout"]):
+                    with gr.Column(elem_classes=["uw-input-panel"]):
+                        app_input = gr.Textbox(
+                            label="Application Details",
+                            placeholder=SAMPLE_APPLICATION,
+                            lines=12,
+                        )
+                        process_btn = gr.Button("🔍 Run Underwriting Assessment", variant="primary")
+                    with gr.Column(elem_classes=["uw-output-panel"]):
+                        single_output = gr.HTML(
+                            """
+                            <div class='uw-output-placeholder'>
+                                Run an assessment to view the decision and reasoning here.
+                            </div>
+                            """
+                        )
                 process_btn.click(
                     fn=_run_underwriting,
                     inputs=[app_input],
                     outputs=[single_output],
                 )
+                with gr.Group(elem_classes=["uw-sample-panel"]):
+                    gr.Markdown("### Sample Application")
+                    gr.Textbox(
+                        label="Copy and paste sample",
+                        value=SAMPLE_APPLICATION,
+                        lines=9,
+                        interactive=False,
+                    )
 
             with gr.TabItem("📊 Batch Processing"):
                 gr.Markdown("""

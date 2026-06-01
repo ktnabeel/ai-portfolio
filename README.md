@@ -58,3 +58,15 @@ uv run python scripts\export_static.py
 ```
 
 Deploy the generated `dist` folder with Vercel. The lightweight FastAPI entrypoint remains in `api/index.py`.
+
+## Secret Key Hygiene
+
+- Keep provider keys in local environment only (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `NVIDIA_API_KEY`).
+- Use ignored local env files such as `.env.local` or system environment variables.
+- Never commit raw API keys in code, tests, docs, or YAML.
+
+Pre-commit scan example:
+
+```powershell
+git grep -n "nvapi""-"
+```

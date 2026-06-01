@@ -47,9 +47,20 @@ def test_static_base_template_uses_neurons_logo_asset() -> None:
     assert "/static/neurons%20logo.png" in html
 
 
-def test_project_templates_include_seven_titles() -> None:
+def test_project_templates_include_eight_titles() -> None:
     titles = [project.title for project in PROJECT_TEMPLATES]
+    expected_order = [
+        "Portfolio Manager",
+        "Trading Desk",
+        "Insurance Underwriting Agent",
+        "Claim Processing",
+        "Movie Recommendations",
+        "Product Review Sentiment Analyzer",
+        "Resume Matcher",
+        "Finance Planning",
+    ]
 
+    assert titles == expected_order
     assert "Portfolio Manager" in titles
     assert "Trading Desk" in titles
     assert "Claim Processing" in titles
@@ -57,7 +68,25 @@ def test_project_templates_include_seven_titles() -> None:
     assert "Product Review Sentiment Analyzer" in titles
     assert "Finance Planning" in titles
     assert "Movie Recommendations" in titles
-    assert len(titles) == 7
+    assert "Resume Matcher" in titles
+    assert len(titles) == 8
+
+
+def test_project_index_renders_in_tab_order() -> None:
+    html = render_page(PROJECT_TEMPLATES, mode="gradio")
+    expected_order = [
+        "Portfolio Manager",
+        "Trading Desk",
+        "Insurance Underwriting Agent",
+        "Claim Processing",
+        "Movie Recommendations",
+        "Product Review Sentiment Analyzer",
+        "Resume Matcher",
+        "Finance Planning",
+    ]
+
+    positions = [html.index(f"<h3>{title}</h3>") for title in expected_order]
+    assert positions == sorted(positions)
 
 
 def test_project_templates_load_visible_strings_from_yaml(tmp_path: Path) -> None:
@@ -98,9 +127,9 @@ def test_seed_projects_is_idempotent(tmp_path: Path) -> None:
     first_count, _ = seed_projects(db_path, PROJECT_TEMPLATES)
     second_count, _ = seed_projects(db_path, PROJECT_TEMPLATES)
 
-    assert first_count == 7
+    assert first_count == 8
     assert second_count == 0
-    assert len(get_projects(db_path)) == 7
+    assert len(get_projects(db_path)) == 8
 
 
 def test_seed_projects_deletes_stale_entries(tmp_path: Path) -> None:
@@ -109,16 +138,16 @@ def test_seed_projects_deletes_stale_entries(tmp_path: Path) -> None:
 
     # Seed with full templates first.
     seed_projects(db_path, PROJECT_TEMPLATES)
-    assert len(get_projects(db_path)) == 7
+    assert len(get_projects(db_path)) == 8
 
     # Create a subset of templates (e.g. remove "Trading Desk" and "Movie Recommendations").
     subset = [p for p in PROJECT_TEMPLATES if p.title not in ("Trading Desk", "Movie Recommendations")]
-    assert len(subset) == 5
+    assert len(subset) == 6
 
     added, deleted = seed_projects(db_path, subset)
     assert added == 0
     assert deleted == 2
-    assert len(get_projects(db_path)) == 5
+    assert len(get_projects(db_path)) == 6
 
     # Verify stale titles are gone.
     titles = {p.title for p in get_projects(db_path)}
@@ -134,7 +163,7 @@ def test_seed_projects_delete_empty_stale_set_is_noop(tmp_path: Path) -> None:
     seed_projects(db_path, PROJECT_TEMPLATES)
     _, deleted = seed_projects(db_path, PROJECT_TEMPLATES)
     assert deleted == 0
-    assert len(get_projects(db_path)) == 7
+    assert len(get_projects(db_path)) == 8
 
 
 def test_underwriting_agent_imports_and_runs() -> None:
@@ -835,7 +864,10 @@ def test_run_underwriting_produces_full_html_structure() -> None:
     assert "Risk Factors" in html
     assert "Policy Context" in html
     assert "uw-policy-grid" in html
-    assert "Reasoning Chain" in html
+    assert "Decision Reasoning" in html
+    assert "uw-assessment-layout" in html
+    assert "uw-result-left" in html
+    assert "uw-result-right" in html
     assert "uw-reasoning" in html
 
 
@@ -955,8 +987,8 @@ def test_gradio_portfolio_renders_in_app_project_links() -> None:
     """Gradio mode uses delegated buttons for tab navigation."""
     html = render_page(PROJECT_TEMPLATES, mode="gradio")
 
-    # All 7 projects should have "Open" links.
-    assert html.count(">Open</button>") == 7
+    # All 8 projects should have "Open" links.
+    assert html.count(">Open</button>") == 8
     assert "javascript:" not in html
     assert 'href="#"' not in html
     assert 'class="brand-lockup"' in html
@@ -964,13 +996,22 @@ def test_gradio_portfolio_renders_in_app_project_links() -> None:
     assert 'neurons.fyi' in html
     assert 'class="landing-footer"' in html
     assert '--theme-bg: #ffffff;' in html
+    assert '--theme-bg: #081527;' in html
+    assert 'class="theme-toggle"' not in html
+    assert "Toggle Theme" not in html
+    assert "theme-icon-light" not in html
+    assert "theme-icon-dark" not in html
     assert 'data-tab-target="trading"' in html
     assert 'data-tab-label="Trading Desk"' in html
+    assert 'data-tab-target="resume_matcher"' in html
+    assert 'data-tab-label="Resume Matcher"' in html
     assert "closest('[data-tab-target]')" in html
     assert 'type="button"' in html
-    # Theme init <script> is allowed (reads localStorage for dark/light mode).
+    # Theme init <script> is allowed, but dark mode is disabled for now.
     assert "<script>" in html
-    assert "localStorage.getItem('theme')" in html
+    assert "localStorage.getItem('theme')" not in html
+    assert "localStorage.removeItem('theme')" in html
+    assert "setAttribute('data-theme','light')" in html
 
 
 def test_project_tiles_render_hover_context() -> None:

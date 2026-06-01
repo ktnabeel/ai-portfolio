@@ -31,7 +31,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "linkedin_url": "https://www.linkedin.com/",
     },
     "stats": [
-        {"label": "AI demos", "value": "7"},
+        {"label": "AI demos", "value": "8"},
         {"label": "Agent workflows", "value": "5+"},
         {"label": "VPS deploy", "value": "Linux"},
     ],
@@ -43,12 +43,13 @@ DEFAULT_CONFIG: dict[str, Any] = {
     ],
     "tabs": {
         "trading_agents": "Portfolio Manager",
+        "trading": "Trading Desk",
         "underwriting": "Insurance Underwriting",
         "claim": "Claim Processing",
         "movie": "Movie Recommendations",
         "sentiment": "Sentiment Analyzer",
+        "resume_matcher": "Resume Matcher",
         "financial": "Financial Agent",
-        "trading": "Trading Desk",
     },
     "project_tab_links": {
         "Portfolio Manager": "trading_agents",
@@ -58,6 +59,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "Finance Planning": "financial",
         "Movie Recommendations": "movie",
         "Product Review Sentiment Analyzer": "sentiment",
+        "Resume Matcher": "resume_matcher",
     },
     "project_demo_urls": {
         "Portfolio Manager": "",
@@ -65,19 +67,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "Claim Processing": "",
         "Insurance Underwriting Agent": "",
         "Product Review Sentiment Analyzer": "",
+        "Resume Matcher": "",
         "Finance Planning": "",
         "Movie Recommendations": "",
     },
     "projects": [
-        {
-            "key": "trading_agents",
-            "title": "Portfolio Manager",
-            "description": "Multi-agent portfolio manager powered by LangGraph — FastAPI service orchestrating Security, Sentiment, Regime, Decision, and Execution agents for market analysis.",
-            "tech_stack": "Python, FastAPI, LangGraph, yfinance, Pydantic",
-            "status": "Built",
-            "tags": ["Agents", "Finance", "FastAPI", "LangGraph"],
-            "tab": "trading_agents",
-        },
         {
             "key": "trading",
             "title": "Trading Desk",
@@ -86,6 +80,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "status": "Built",
             "tags": ["Agents", "Finance", "Trading", "Options"],
             "tab": "trading",
+        },
+        {
+            "key": "trading_agents",
+            "title": "Portfolio Manager",
+            "description": "Multi-agent portfolio manager powered by LangGraph — FastAPI service orchestrating Security, Sentiment, Regime, Decision, and Execution agents for market analysis.",
+            "tech_stack": "Python, FastAPI, LangGraph, yfinance, Pydantic",
+            "status": "Built",
+            "tags": ["Agents", "Finance", "FastAPI", "LangGraph"],
+            "tab": "trading_agents",
         },
         {
             "key": "claim",
@@ -122,6 +125,15 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "status": "Built",
             "tags": ["Finance", "Planning", "Assistant"],
             "tab": "financial",
+        },
+        {
+            "key": "resume_matcher",
+            "title": "Resume Matcher",
+            "description": "NVIDIA-backed resume-to-job matching app that scores fit, highlights gaps, and recommends targeted resume edits.",
+            "tech_stack": "Python, Gradio, NVIDIA API, LangChain",
+            "status": "Built",
+            "tags": ["NLP", "Recruiting", "NVIDIA", "LLM"],
+            "tab": "resume_matcher",
         },
         {
             "key": "movie",

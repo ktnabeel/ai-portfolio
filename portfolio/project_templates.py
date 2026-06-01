@@ -15,11 +15,25 @@ def get_project_templates(config: dict[str, Any] | None = None) -> list[Project]
     config = config or load_config()
     demo_urls = config.get("project_demo_urls", {})
     projects = config.get("projects", [])
+    tab_order = {
+        str(tab_id): index
+        for index, tab_id in enumerate(config.get("tabs", {}).keys())
+    }
+
+    indexed_projects = [
+        (index, item)
+        for index, item in enumerate(projects)
+        if isinstance(item, dict)
+    ]
+    indexed_projects.sort(
+        key=lambda pair: (
+            tab_order.get(str(pair[1].get("tab", "")), len(tab_order) + pair[0]),
+            pair[0],
+        )
+    )
 
     templates: list[Project] = []
-    for item in projects:
-        if not isinstance(item, dict):
-            continue
+    for _, item in indexed_projects:
         title = str(item.get("title", "")).strip()
         if not title:
             continue

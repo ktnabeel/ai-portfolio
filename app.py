@@ -13,6 +13,7 @@ from portfolio.sentiment import render_sentiment_tab, SENTIMENT_CSS
 from portfolio.trading.ui import render_trading_tab, TRADING_CSS
 from portfolio.trading_agents_manager import render_trading_agents_tab, TRADING_AGENTS_CSS
 from portfolio.underwriting.render import render_underwriting_tab, UNDERWRITING_CSS
+from portfolio.resume_matcher import render_resume_matcher_tab, RESUME_MATCHER_CSS
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,6 +29,29 @@ html[data-theme="dark"] body,
 html[data-theme="dark"] .gradio-container {
   background: var(--theme-bg) !important;
 }
+html[data-theme="dark"] .gradio-container,
+html[data-theme="dark"] .gradio-container h1,
+html[data-theme="dark"] .gradio-container h2,
+html[data-theme="dark"] .gradio-container h3,
+html[data-theme="dark"] .gradio-container h4,
+html[data-theme="dark"] .gradio-container h5,
+html[data-theme="dark"] .gradio-container h6,
+html[data-theme="dark"] .gradio-container label,
+html[data-theme="dark"] .gradio-container th,
+html[data-theme="dark"] .gradio-container td {
+  color: var(--theme-ink);
+}
+html[data-theme="dark"] .gradio-container input,
+html[data-theme="dark"] .gradio-container textarea,
+html[data-theme="dark"] .gradio-container select {
+  background: var(--theme-surface) !important;
+  color: var(--theme-ink) !important;
+  border-color: var(--theme-line) !important;
+}
+html[data-theme="dark"] .gradio-container input::placeholder,
+html[data-theme="dark"] .gradio-container textarea::placeholder {
+  color: var(--theme-muted) !important;
+}
 
 /* ===== Tighten Gradio Layout ===== */
 .tabs { margin-bottom: 0 !important; }
@@ -39,7 +63,7 @@ html[data-theme="dark"] .gradio-container {
   display: flex !important;
   flex-wrap: wrap !important;
   justify-content: flex-start !important;
-  gap: 4px !important;
+  gap: 2px !important;
   overflow: visible !important;
   background: rgba(var(--theme-panel-rgb), .82) !important;
   border-bottom: 1px solid var(--theme-line) !important;
@@ -47,9 +71,12 @@ html[data-theme="dark"] .gradio-container {
 }
 .tab-nav button,
 .tabs > .tab-nav button {
-  font-size: 11px !important;
+  flex: 0 1 auto !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+  font-size: 10px !important;
   font-weight: 600 !important;
-  padding: 6px 10px !important;
+  padding: 5px 8px !important;
 }
 button, .gr-button {
   border-radius: 10px !important;
@@ -65,6 +92,7 @@ input, textarea, select, .wrap, .container, .block {
 #underwriting-tab,
 #sentiment-tab,
 #movie-tab,
+#resume-matcher-tab,
 #trading-desk-shell {
   max-width: 1380px;
   margin: 18px auto 34px;
@@ -134,6 +162,7 @@ input, textarea, select, .wrap, .container, .block {
   --theme-ink: #101828;
   --theme-muted: #667085;
   --theme-line: #d9e2ec;
+  --theme-line-rgb: 217,226,236;
   --theme-green: #0f8f6e;
   --theme-blue: #2563eb;
   --theme-amber: #b7791f;
@@ -160,35 +189,38 @@ input, textarea, select, .wrap, .container, .block {
   --trading-green-bright: #22c55e;
 }
 [data-theme="dark"] {
-  --theme-bg: #2f3437;
-  --theme-panel: #373c3f;
-  --theme-ink: rgba(255,255,255,.92);
-  --theme-muted: rgba(255,255,255,.68);
-  --theme-line: rgba(255,255,255,.14);
-  --theme-green: #37c78a;
-  --theme-blue: #1ca0f1;
-  --theme-amber: #dfab01;
-  --theme-surface: #454b4e;
-  --theme-tag-bg: #454b4e;
-  --theme-tag-text: rgba(255,255,255,.86);
+  --theme-bg: #081527;
+  --theme-panel: #0f2038;
+  --theme-ink: #f7fbff;
+  --theme-muted: rgba(226,235,249,.86);
+  --theme-line: rgba(166,190,226,.34);
+  --theme-line-rgb: 166,190,226;
+  --theme-green: #55d6a5;
+  --theme-blue: #7cb7ff;
+  --theme-amber: #ffd166;
+  --theme-surface: #173153;
+  --theme-tag-bg: #18385f;
+  --theme-tag-text: #f2f7ff;
   --theme-red: #ff7369;
   --theme-orange: #ff9a56;
-  --theme-shadow: rgba(0,0,0,.28);
-  --theme-shadow-hover: rgba(0,0,0,.45);
-  --theme-panel-rgb: 55,60,63;
-  --trading-bg: #2f3437;
-  --trading-card: #373c3f;
-  --trading-border: rgba(255,255,255,.14);
-  --trading-accent: #1ca0f1;
-  --trading-green: #37c78a;
+  --theme-shadow: rgba(0,0,0,.32);
+  --theme-shadow-hover: rgba(0,0,0,.48);
+  --theme-panel-rgb: 15,32,56;
+  --theme-page-top: #0b1b33;
+  --theme-page-bottom: #10233f;
+  --trading-bg: #081527;
+  --trading-card: #0f2038;
+  --trading-border: rgba(166,190,226,.34);
+  --trading-accent: #7cb7ff;
+  --trading-green: #55d6a5;
   --trading-red: #ff7369;
-  --trading-amber: #dfab01;
+  --trading-amber: #ffd166;
   --trading-purple: #b58cff;
   --trading-teal: #36d1c4;
-  --trading-text: rgba(255,255,255,.92);
-  --trading-secondary: rgba(255,255,255,.68);
+  --trading-text: #f7fbff;
+  --trading-secondary: rgba(226,235,249,.86);
   --trading-orange: #ff9a56;
-  --trading-green-bright: #4ee39f;
+  --trading-green-bright: #7ae8bf;
 }
 """
 
@@ -215,6 +247,9 @@ def build_app() -> gr.Blocks:
             with gr.TabItem(tabs_config.get("trading_agents", "Portfolio Manager")):
                 render_trading_agents_tab()
 
+            with gr.TabItem(tabs_config.get("trading", "Trading Desk")):
+                render_trading_tab()
+
             with gr.TabItem(tabs_config.get("underwriting", "Insurance Underwriting")):
                 render_underwriting_tab()
 
@@ -227,11 +262,11 @@ def build_app() -> gr.Blocks:
             with gr.TabItem(tabs_config.get("sentiment", "Sentiment Analyzer")):
                 render_sentiment_tab()
 
+            with gr.TabItem(tabs_config.get("resume_matcher", "Resume Matcher")):
+                render_resume_matcher_tab()
+
             with gr.TabItem(tabs_config.get("financial", "Financial Agent")):
                 render_financial_tab()
-
-            with gr.TabItem(tabs_config.get("trading", "Trading Desk")):
-                render_trading_tab()
 
     return demo
 
@@ -244,5 +279,5 @@ if __name__ == "__main__":
     demo.launch(
         server_name=launch_config["server"]["host"],
         server_port=launch_config["server"]["port"],
-        css=APP_CSS + DARK_CSS + CLAIM_DARK_CSS + MOVIE_CSS + SENTIMENT_CSS + UNDERWRITING_CSS + TRADING_CSS + TRADING_AGENTS_CSS,
+        css=APP_CSS + DARK_CSS + CLAIM_DARK_CSS + MOVIE_CSS + SENTIMENT_CSS + UNDERWRITING_CSS + RESUME_MATCHER_CSS + TRADING_CSS + TRADING_AGENTS_CSS,
     )

@@ -35,6 +35,27 @@ def _tab_labels_from_config(config: dict[str, Any]) -> dict[str, str]:
     return config.get("tabs", {})
 
 
+def _order_projects_for_tabs(projects: list[Project], config: dict[str, Any]) -> list[Project]:
+    """Return projects in the same order as the configured app tabs."""
+    tab_order = {
+        str(tab_id): index
+        for index, tab_id in enumerate(config.get("tabs", {}).keys())
+    }
+    if not tab_order:
+        return projects
+
+    tab_links = _tab_links_from_config(config)
+    fallback = len(tab_order)
+    ordered = sorted(
+        enumerate(projects),
+        key=lambda pair: (
+            tab_order.get(tab_links.get(pair[1].title, ""), fallback + pair[0]),
+            pair[0],
+        ),
+    )
+    return [project for _, project in ordered]
+
+
 _DEFAULT_PROJECT_CONTEXT: dict[str, dict[str, Any]] = {
     "Portfolio Manager": {
         "project_summary": "Production-style multi-agent portfolio manager that turns market data, sentiment, and risk signals into explainable portfolio actions.",
@@ -75,6 +96,14 @@ _DEFAULT_PROJECT_CONTEXT: dict[str, dict[str, Any]] = {
         "ai_application": "NLP classification and summarization patterns convert unstructured reviews into structured product insights.",
         "impact": "Demonstrates practical NLP for product, support, and operations teams.",
         "proof_points": ["Per-review sentiment", "Product rollups", "Keyword extraction", "Visual distributions"],
+    },
+    "Resume Matcher": {
+        "project_summary": "NVIDIA-backed resume screening assistant that compares a candidate resume against a target role and returns fit guidance.",
+        "problem": "Job seekers need fast, specific feedback on whether their resume reflects the actual requirements in a job description.",
+        "architecture": "Gradio handles file upload and job text input, local parsers extract resume text, and an NVIDIA-hosted chat model returns structured scoring.",
+        "ai_application": "The LLM evaluates requirement coverage, identifies weak or missing evidence, and recommends concrete resume edits.",
+        "impact": "Shows practical AI for recruiting workflows where output needs to be explainable and immediately actionable.",
+        "proof_points": ["Resume upload", "NVIDIA API scoring", "Gap analysis", "Targeted edit pointers"],
     },
     "Finance Planning": {
         "project_summary": "Financial planning assistant for portfolio analysis, budgeting scenarios, and goal-oriented decision support.",
@@ -372,9 +401,10 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
     tab_links = _tab_links_from_config(config)
     tab_labels = _tab_labels_from_config(config)
     project_details = _project_details_from_config(config)
+    ordered_projects = _order_projects_for_tabs(projects, config)
     page = _render_shell(
         _render_project_grid(
-            projects,
+            ordered_projects,
             mode=mode,
             tab_links=tab_links,
             tab_labels=tab_labels,
@@ -387,10 +417,8 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
     if mode == "gradio":
         theme_init_js = (
             "<script>(function(){"
-            "var t;try{t=localStorage.getItem('theme')}catch(e){};"
-            "if(t){document.documentElement.setAttribute('data-theme',t)}"
-            "else if(window.matchMedia('(prefers-color-scheme:dark)').matches)"
-            "{document.documentElement.setAttribute('data-theme','dark')};"
+            "document.documentElement.setAttribute('data-theme','light');"
+            "try{localStorage.removeItem('theme')}catch(e){};"
             "})();</script>"
         )
         return f"<style>{_css()}</style>{theme_init_js}{page}{_gradio_tab_switch_script()}"
@@ -404,13 +432,8 @@ def render_page(projects: list[Project], mode: str = "static", config: dict[str,
   <title>{escape(site["title"])}</title>
   <script>
     (function(){{
-      var t;
-      try {{ t = localStorage.getItem('theme'); }} catch (e) {{}}
-      if (t) {{
-        document.documentElement.setAttribute('data-theme', t);
-      }} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches) {{
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }}
+      document.documentElement.setAttribute('data-theme', 'light');
+      try {{ localStorage.removeItem('theme'); }} catch (e) {{}}
     }})();
   </script>
   <style>{_css()}</style>
@@ -507,10 +530,6 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
           <a href="{escape(site["linkedin_url"])}" target="_blank" rel="noreferrer" class="top-bar-contact">Contact</a>
         </div>
         <div class="top-bar-right">
-          <button class="theme-toggle" onclick="(function(){{var h=document.documentElement;var t=h.getAttribute('data-theme')==='dark'?'light':'dark';h.setAttribute('data-theme',t);try{{localStorage.setItem('theme',t)}}catch(e){{}}}})();" aria-label="Toggle dark/light theme" title="Toggle theme">
-            <span class="theme-icon-light">☀️</span>
-            <span class="theme-icon-dark">🌙</span>
-          </button>
         </div>
       </header>
 
@@ -686,6 +705,7 @@ def _css() -> str:
   --theme-ink: #101828;
   --theme-muted: #667085;
   --theme-line: #d9e2ec;
+  --theme-line-rgb: 217, 226, 236;
   --theme-green: #0f8f6e;
   --theme-blue: #2563eb;
   --theme-amber: #b7791f;
@@ -706,26 +726,27 @@ def _css() -> str:
 /* ===== Dark Theme ===== */
 [data-theme="dark"] {
   color-scheme: dark;
-  --theme-bg: #2f3437;
-  --theme-panel: #373c3f;
-  --theme-ink: rgba(255,255,255,.92);
-  --theme-muted: rgba(255,255,255,.68);
-  --theme-line: rgba(255,255,255,.14);
-  --theme-green: #37c78a;
-  --theme-blue: #1ca0f1;
-  --theme-amber: #dfab01;
-  --theme-surface: #454b4e;
-  --theme-tag-bg: #454b4e;
-  --theme-tag-text: rgba(255,255,255,.86);
-  --theme-shadow: rgba(0,0,0,.28);
-  --theme-shadow-hover: rgba(0,0,0,.45);
-  --theme-card-hover-border: rgba(28,160,241,.52);
-  --theme-status-glow: rgba(55,199,138,.22);
-  --theme-green-hover: #4ee39f;
-  --theme-blue-hover: #60bdf5;
-  --theme-panel-rgb: 55, 60, 63;
-  --theme-page-top: #252a2d;
-  --theme-page-bottom: #343a3d;
+  --theme-bg: #081527;
+  --theme-panel: #0f2038;
+  --theme-ink: #f7fbff;
+  --theme-muted: rgba(226,235,249,.86);
+  --theme-line: rgba(166,190,226,.34);
+  --theme-line-rgb: 166, 190, 226;
+  --theme-green: #55d6a5;
+  --theme-blue: #7cb7ff;
+  --theme-amber: #ffd166;
+  --theme-surface: #173153;
+  --theme-tag-bg: #18385f;
+  --theme-tag-text: #f2f7ff;
+  --theme-shadow: rgba(0,0,0,.32);
+  --theme-shadow-hover: rgba(0,0,0,.48);
+  --theme-card-hover-border: rgba(124,183,255,.52);
+  --theme-status-glow: rgba(85,214,165,.22);
+  --theme-green-hover: #7ae8bf;
+  --theme-blue-hover: #a8d0ff;
+  --theme-panel-rgb: 15, 32, 56;
+  --theme-page-top: #0b1b33;
+  --theme-page-bottom: #10233f;
 }
 
 * { box-sizing: border-box; }
@@ -873,39 +894,6 @@ h1, h2, h3, p { margin-top: 0; }
   color: var(--theme-blue-hover) !important;
 }
 
-
-/* ===== Theme Toggle ===== */
-.theme-toggle {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--theme-line);
-  border-radius: 8px;
-  background: var(--theme-panel);
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-  transition: border-color .18s ease, background .18s ease;
-}
-.theme-toggle:hover {
-  border-color: var(--theme-green);
-  background: var(--theme-surface);
-}
-.theme-icon-light,
-.theme-icon-dark {
-  font-size: 18px;
-  line-height: 1;
-  transition: opacity .25s ease, transform .25s ease;
-  position: absolute;
-}
-.theme-icon-light { opacity: 1; transform: scale(1); }
-.theme-icon-dark  { opacity: 0; transform: scale(0.5); }
-[data-theme="dark"] .theme-icon-light { opacity: 0; transform: scale(0.5); }
-[data-theme="dark"] .theme-icon-dark  { opacity: 1; transform: scale(1); }
-
 .intro {
   padding: 44px 8px 26px;
   max-width: 980px;
@@ -925,10 +913,21 @@ h1, h2, h3, p { margin-top: 0; }
 
 /* ===== Stats Strip ===== */
 .stats-strip {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
+}
+.stats-strip::before {
+  content: "";
+  position: absolute;
+  inset: -24px -12px -10px;
+  z-index: -1;
+  background:
+    radial-gradient(50% 60% at 12% 30%, rgba(29, 102, 247, .18), transparent 72%),
+    radial-gradient(44% 52% at 85% 35%, rgba(17, 163, 120, .16), transparent 78%);
+  pointer-events: none;
 }
 .stat-item {
   min-width: 0;
@@ -938,17 +937,25 @@ h1, h2, h3, p { margin-top: 0; }
   justify-content: center;
   align-items: center;
   gap: 2px;
-  border: 1px solid var(--theme-line);
+  border: 1px solid rgba(var(--theme-line-rgb), .75);
   border-radius: 14px;
   padding: 15px 14px;
-  background: rgba(var(--theme-panel-rgb), .9);
-  box-shadow: 0 16px 40px var(--theme-shadow);
-  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  background:
+    linear-gradient(160deg, rgba(var(--theme-panel-rgb), .92), rgba(var(--theme-panel-rgb), .8)),
+    var(--theme-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 24px 44px rgba(11, 25, 50, .14);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+  transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease, border-color .26s ease;
 }
 .stat-item:hover {
-  transform: translateY(-3px);
-  border-color: var(--theme-card-hover-border);
-  box-shadow: 0 8px 24px var(--theme-shadow-hover);
+  transform: translateY(-6px) scale(1.01);
+  border-color: rgba(28, 160, 241, .45);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.2),
+    0 28px 54px rgba(12, 26, 50, .22);
 }
 .stat-value {
   max-width: 100%;
@@ -971,68 +978,86 @@ h1, h2, h3, p { margin-top: 0; }
 .proof-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0 0 18px;
+  gap: 12px;
+  margin: 0 0 20px;
 }
 .proof-item {
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 10px;
-  row-gap: 3px;
+  column-gap: 12px;
+  row-gap: 5px;
   align-items: start;
-  border: 1px solid var(--theme-line);
-  border-radius: 14px;
-  padding: 12px;
+  border: 1px solid rgba(28, 160, 241, .22);
+  border-radius: 16px;
+  padding: 14px;
   background:
-    linear-gradient(135deg, rgba(37,99,235,.07), rgba(15,143,110,.05)),
+    linear-gradient(145deg, rgba(37,99,235,.12), rgba(15,143,110,.09)),
     rgba(var(--theme-panel-rgb), .92);
-  box-shadow: 0 12px 30px var(--theme-shadow);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    0 14px 34px var(--theme-shadow);
+  transition: transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease, border-color .24s ease;
+}
+.proof-item:hover {
+  transform: translateY(-4px);
+  border-color: rgba(28, 160, 241, .38);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    0 22px 42px rgba(12, 31, 58, .2);
 }
 .proof-marker {
   grid-row: span 2;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
-  background: var(--theme-ink);
-  color: var(--theme-panel);
+  border-radius: 11px;
+  background: linear-gradient(160deg, #07142d, #14284c);
+  color: #9cc6ff;
+  border: 1px solid rgba(156, 198, 255, .28);
   font-size: 11px;
   font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
 }
 .proof-item strong {
   min-width: 0;
   color: var(--theme-ink);
-  font-size: 13px;
-  line-height: 1.2;
+  font-size: 15px;
+  line-height: 1.25;
 }
 .proof-item span:last-child {
   min-width: 0;
   color: var(--theme-muted);
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .capability-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 30px;
+  gap: 14px;
+  margin-bottom: 34px;
 }
 .capability-strip div {
   min-height: 96px;
-  border: 1px solid var(--theme-line);
+  border: 1px solid rgba(var(--theme-line-rgb), .78);
   border-radius: 14px;
   padding: 18px;
-  background: rgba(var(--theme-panel-rgb), .9);
-  box-shadow: 0 14px 34px var(--theme-shadow);
-  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+  background:
+    linear-gradient(165deg, rgba(var(--theme-panel-rgb), .94), rgba(var(--theme-panel-rgb), .82)),
+    var(--theme-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    0 18px 38px rgba(15,23,42,.15);
+  transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease, border-color .28s ease;
 }
 .capability-strip div:hover {
-  transform: translateY(-4px);
-  border-color: var(--theme-card-hover-border);
-  box-shadow: 0 12px 32px var(--theme-shadow-hover);
+  transform: translateY(-6px);
+  border-color: rgba(15,143,110,.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.2),
+    0 26px 46px rgba(15,23,42,.22);
 }
 .capability-strip strong,
 .capability-strip span {
@@ -1042,9 +1067,11 @@ h1, h2, h3, p { margin-top: 0; }
   margin-bottom: 8px;
   font-size: 18px;
   line-height: 1.2;
+  letter-spacing: 0;
 }
 .capability-strip span {
   color: var(--theme-muted);
+  font-size: 16px;
   line-height: 1.45;
 }
 .projects-section {
@@ -1322,6 +1349,11 @@ h1, h2, h3, p { margin-top: 0; }
   border-color: var(--theme-green-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(18,120,93,.25);
+}
+[data-theme="dark"] .card-link-demo,
+[data-theme="dark"] .card-link-demo:hover,
+[data-theme="dark"] .card-link-external:hover {
+  color: #061426;
 }
 
 .muted { color: var(--theme-muted); font-weight: 750; }
