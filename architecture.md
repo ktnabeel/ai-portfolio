@@ -2,7 +2,7 @@
 
 > This document covers the **movie recommender** subsystem only. The repo hosts several other systems:
 > - **Financial Agent** — see `portfolio/financial/` (5 specialized agents + `DecisionOrchestrator`)
-> - **Trading** — see `portfolio/trading/docs/README.md`, `ARCHITECTURE.md`, `FLOWS.md`
+> - **Trading** — see `portfolio/trading/docs/README.md`, `ARCHITECTURE.md`, `FLOWS.md` for the LangGraph trading workflow, hoverable pipeline audit UI, human review gate, and MCP paper execution
 > - **TradingAgents Manager** — see `portfolio/trading_agents_manager/` (FastAPI + LangGraph portfolio manager)
 > - **Sentiment Analyzer** — see `portfolio/sentiment/`
 > - **Claim Processing** — see `portfolio/claim_processing/`

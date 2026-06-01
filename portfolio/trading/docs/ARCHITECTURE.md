@@ -2,17 +2,22 @@
 
 ## Overview
 
-A LangGraph-orchestrated multi-agent trading system that analyzes stock symbols, scrapes market sentiment (CNN Fear & Greed), detects market regimes (Bull/Bear/Neutral), selects options strategies (Call/Put/Strangle), and executes paper trades via an MCP server.
+A LangGraph-orchestrated multi-agent trading system that analyzes stock symbols, scrapes market sentiment (CNN Fear & Greed), detects market regimes (Bull/Bear/Neutral), selects options strategies (Call/Put/Strangle), pauses for human review, and executes approved paper trades via an MCP server.
 
 ## Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         GRADIO UI LAYER                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────┐ │
-│  │ Security │  │Sentiment │  │  Regime  │  │ Decision │  │Exec   │ │
-│  │  Panel   │  │  Panel   │  │  Panel   │  │  Panel   │  │Panel  │ │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └───────┘ │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │ Hoverable Pipeline Map: Security → Sentiment → Regime → Chain │  │
+│  │ → Decision → Human Review → Execution                         │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│  ┌─────────────────────┐        ┌────────────────────────────────┐ │
+│  │ Left Control Panel  │        │ Right Trace Panel              │ │
+│  │ Inputs, HITL review,│        │ Agent cards, MCP connectivity, │ │
+│  │ order confirmation  │        │ tool-call details              │ │
+│  └─────────────────────┘        └────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -20,7 +25,7 @@ A LangGraph-orchestrated multi-agent trading system that analyzes stock symbols,
 │                      LANGGRAPH ORCHESTRATION                        │
 │                                                                     │
 │  START → [Security] → [Sentiment] → [Regime] → [Chain] →           │
-│          [Decision] → [Execution] → END                             │
+│          [Decision] → [Human Review] → [Execution] → END            │
 │                                                                     │
 │  State: TradingState (TypedDict) flows through all nodes            │
 └─────────────────────────────────────────────────────────────────────┘
@@ -45,25 +50,25 @@ A LangGraph-orchestrated multi-agent trading system that analyzes stock symbols,
 
 ### 1. Security Agent (`agents/security_agent.py`)
 - **Input:** Stock symbol (e.g., "AAPL")
-- **Tools:** yfinance, OpenAI GPT-4o
+- **Tools:** yfinance, selected LangChain chat model
 - **Output:** `SecurityInfo` (company name, sector, market cap, price, options availability)
 - **Reasoning:** Validates the symbol, identifies the company, determines if options are available
 
 ### 2. Risk & Sentiment Agent (`agents/risk_sentiment_agent.py`)
 - **Input:** None (fetches independently)
-- **Tools:** CNN Fear & Greed scraper, RSS news scraper, OpenAI GPT-4o
+- **Tools:** CNN Fear & Greed scraper, RSS news scraper, selected LangChain chat model
 - **Output:** `RiskSentimentOutput` (Fear & Greed value/zone, world news, risk level, market trend)
 - **Reasoning:** Synthesizes sentiment data and news into a risk assessment
 
 ### 3. Regime Detection Agent (`agents/regime_agent.py`)
 - **Input:** `RiskSentimentOutput` (optional context)
-- **Tools:** yfinance (SPY data), technical indicators (RSI, SMA, volatility), OpenAI GPT-4o
+- **Tools:** yfinance (SPY data), technical indicators (RSI, SMA, volatility), selected LangChain chat model
 - **Output:** `RegimeOutput` (Bull/Bear/Neutral, confidence, indicators)
 - **Reasoning:** Classifies the market regime using S&P 500 data and context
 
 ### 4. Decision Agent (`agents/decision_agent.py`)
 - **Input:** All upstream outputs (`SecurityInfo`, `RiskSentimentOutput`, `RegimeOutput`, `OptionChain`)
-- **Tools:** Options chain data, OpenAI GPT-4o
+- **Tools:** Options chain data, selected LangChain chat model
 - **Output:** `StrategyDecision` (Call/Put/Strangle/No Trade, strike, expiration, risk/reward)
 - **Reasoning:** Selects optimal options strategy based on comprehensive market context
 
@@ -72,6 +77,12 @@ A LangGraph-orchestrated multi-agent trading system that analyzes stock symbols,
 - **Tools:** MCP Trading Server (paper trading)
 - **Output:** `ExecutionResult` (order confirmation, P&L, status)
 - **Reasoning:** Formats and submits the order, confirms execution
+
+### Human Review Gate (`ui/trading_ui.py`)
+- **Input:** Serialized analysis state and `StrategyDecision`
+- **Tools:** Gradio approval/rejection callbacks
+- **Output:** Either a rejected recommendation record, a skipped No Trade path, or an approved execution request
+- **Reasoning:** Keeps paper execution separate from analysis so users can inspect the recommendation before any simulated order is submitted
 
 ## Data Flow
 
@@ -91,13 +102,16 @@ Regime Agent ←── yfinance (SPY), technical indicators
 Options Chain Fetch ←── Polygon.io API / Black-Scholes synthetic
     │
     ▼
-Decision Agent ←── OpenAI GPT-4o reasoning
+Decision Agent ←── Selected LLM provider/model reasoning
+    │
+    ▼
+Human Review Gate ←── User approval/rejection
     │
     ▼
 Execution Agent ←── MCP Paper Trading Server
     │
     ▼
-UI displays: all agent reasoning, execution confirmation
+UI displays: agent traces, MCP connectivity, left-panel order confirmation, account summary
 ```
 
 ## Key Design Decisions
@@ -105,8 +119,10 @@ UI displays: all agent reasoning, execution confirmation
 1. **LangGraph over manual orchestration**: Directed graph ensures deterministic execution order and clean state management
 2. **MCP Protocol**: Follows the Model Context Protocol pattern for tool exposure, enabling LLMs to interact with the broker through structured tool calls
 3. **Black-Scholes fallback**: When Polygon API is unavailable, synthetic option chains are generated using Black-Scholes with volatility smiles
-4. **Per-agent reasoning panels**: Each agent's output is displayed in its own UI tab with the LLM's reasoning visible, providing full transparency
-5. **Rule-based fallbacks**: Every agent has a rule-based fallback path when the LLM is unavailable, ensuring the system always produces output
+4. **Hoverable pipeline audit map**: Each agent tile exposes input/output traces, path summaries, and scrollable tooltip bodies for long Regime and Decision messages
+5. **Human-in-the-loop execution**: Analysis stops before paper execution. A tradeable strategy must be approved or rejected before the MCP server receives an order
+6. **Separated execution surfaces**: The left control panel owns the order confirmation card, while the right trace panel stays focused on MCP connectivity and tool-call status
+7. **Rule-based fallbacks**: Every agent has a rule-based fallback path when the LLM is unavailable, ensuring the system always produces output
 
 ## File Structure
 
@@ -139,7 +155,7 @@ portfolio/trading/
 │   └── news_scraper.py      # World news RSS scraper
 ├── ui/
 │   ├── __init__.py
-│   └── trading_ui.py        # Gradio UI with per-agent panels
+│   └── trading_ui.py        # Gradio UI with pipeline map, HITL review, order confirmation
 └── docs/
     ├── ARCHITECTURE.md       # This file
     ├── FLOWS.md              # Detailed workflow flows
@@ -150,7 +166,7 @@ portfolio/trading/
 
 - **langgraph**: Agent orchestration & state management
 - **langchain**: LLM interaction framework
-- **langchain-openai**: OpenAI GPT-4o integration
+- **langchain-openai / langchain-anthropic**: OpenAI and Anthropic chat model integrations
 - **mcp**: Model Context Protocol
 - **yfinance**: Market data (prices, fundamentals, SPY)
 - **httpx + beautifulsoup4**: Web scraping (Fear & Greed, news)
@@ -162,5 +178,6 @@ portfolio/trading/
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `OPENAI_API_KEY` | Yes | GPT-4o reasoning for all agents |
+| `OPENAI_API_KEY` | No | OpenAI model reasoning; rule-based fallback is used when absent |
+| `ANTHROPIC_API_KEY` | No | Anthropic model reasoning; rule-based fallback is used when absent |
 | `POLYGON_API_KEY` | No | Real options chain data (falls back to synthetic) |

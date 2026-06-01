@@ -4,7 +4,7 @@
 
 ### Prerequisites
 1. Python 3.10+
-2. OpenAI API key (set as `OPENAI_API_KEY` environment variable)
+2. Optional LLM API key: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 3. Optional: Polygon.io API key (set as `POLYGON_API_KEY`) for real options data
 
 ### Installation
@@ -18,20 +18,37 @@ uv sync
 uv run python app.py
 ```
 
-Open http://127.0.0.1:7860 in your browser, then click the **🤖 Trading Agent** tab.
+Open http://127.0.0.1:7860 in your browser, then click the **Trading Desk** tab.
 
 ## Usage
 
 1. **Enter a stock symbol** in the input field (e.g., `AAPL`, `NVDA`, `TSLA`, `SPY`)
 2. **Click "Run Multi-Agent Analysis"**
-3. Watch 5 specialized AI agents execute in sequence:
+3. Watch the specialized agents execute in sequence on the pipeline map:
    - 🔍 **Security Agent**: Validates the symbol, shows company profile
    - 🌐 **Risk/Sentiment Agent**: Shows CNN Fear & Greed + world news
    - 🔄 **Regime Agent**: Classifies Bull/Bear/Neutral market
    - 🎯 **Decision Agent**: Selects Call/Put/Strangle strategy with rationale
-   - 💸 **Execution Agent**: Executes paper trade via MCP server
+   - 🔍 **Human Review**: Pauses for approval when the decision is tradeable
+   - 💸 **Execution Agent**: Executes paper trade via MCP server after approval
 
-4. **Browse per-agent tabs** to see WHY each decision was made — the LLM's full reasoning is displayed
+4. **Hover or focus each pipeline tile** to inspect its input and output trace. Long traces scroll inside the tooltip so full detection and decision messages remain readable.
+5. If the Decision Agent recommends **No Trade**, no execution review is required.
+6. If the Decision Agent recommends a tradeable strategy, use the left-panel review controls:
+   - **Execute Trade** submits the paper order through MCP.
+   - **Reject Trade** records the rejection reason and skips execution.
+7. After execution, the **order confirmation card appears in the left control panel** below the review controls. The right-side trace remains reserved for MCP connectivity and tool-call details.
+8. The account summary appears after execution or rejection and continues to show positions, order history, rejection history, balances, and P&L.
+
+## Trading Desk UI
+
+- **Pipeline audit map:** Displays Security, Risk/Sentiment, Regime, Options Chain, Decision, Human Review, and Execution tiles.
+- **Trace tooltips:** Each tile includes `Input` and `Output` sections. Top-row tooltips open below the tile; bottom-row tooltips open upward on desktop and stack below on smaller screens.
+- **Path summary:** The flow footer explains the route taken through the workflow, including No Trade, Human Review, Rejected, and Execution outcomes.
+- **Review panel:** Approval/rejection controls appear only for tradeable recommendations.
+- **Order confirmation slot:** Successful execution renders the full order confirmation in the left panel so it stays close to the approval action.
+- **MCP trace panel:** The right trace shows server connectivity and tool-call status without duplicating the full order confirmation card.
+- **Stale-state clearing:** New analysis, rejection, No Trade, account reset, or invalid execution state clears old confirmation HTML.
 
 ## Paper Trading Account
 
@@ -40,6 +57,7 @@ Open http://127.0.0.1:7860 in your browser, then click the **🤖 Trading Agent*
 - **Orders fill instantly** at estimated market prices
 - **Access account status** via the MCP server's `get_account_status` tool
 - **Reset account** via `reset_account` tool
+- **Rejected recommendations** are recorded in rejection history without changing positions
 
 ## Strategies Explained
 
@@ -52,7 +70,7 @@ Open http://127.0.0.1:7860 in your browser, then click the **🤖 Trading Agent*
 
 ## Agent Reasoning
 
-Every agent uses OpenAI GPT-4o for reasoning. The LLM explains:
+Every agent uses the selected LLM provider/model for reasoning when an API key is available, with rule-based fallbacks otherwise. The UI surfaces each stage's trace through the pipeline map:
 - **Why** the security is valid/invalid
 - **What** the Fear & Greed index means for the market
 - **Why** the regime is classified as Bull/Bear/Neutral
@@ -65,7 +83,7 @@ This transparency ensures you understand every decision in the chain.
 
 If any component fails:
 - **No internet / yfinance down**: Agents use fallback data and notify you
-- **No OpenAI API key**: Agents use rule-based decision logic
+- **No LLM API key**: Agents use rule-based decision logic
 - **No Polygon API key**: Synthetic option chains generated via Black-Scholes
 
 The system is designed to always produce output, even with degraded data sources.
@@ -76,14 +94,17 @@ The system is designed to always produce output, even with degraded data sources
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `OPENAI_API_KEY` | (required) | GPT-4o for agent reasoning |
+| `OPENAI_API_KEY` | (optional) | OpenAI model reasoning; rule-based fallback is used when absent |
+| `ANTHROPIC_API_KEY` | (optional) | Anthropic model reasoning; rule-based fallback is used when absent |
 | `POLYGON_API_KEY` | (optional) | Real options chain data |
 
 ### Model Selection
 
-By default, all agents use `gpt-4o`. To change:
-- Edit `model_name="gpt-4o"` in each agent's `__init__` call
-- Or set environment variable and modify `ChatOpenAI(model=...)` calls
+The Trading Desk has provider and model dropdowns in the left control panel.
+
+- OpenAI default: `gpt-4o`
+- Anthropic default: `claude-sonnet-4-20250514`
+- Leave the API key field blank to use the matching environment variable.
 
 ## MCP Server Tools
 
@@ -101,7 +122,9 @@ The paper trading MCP server exposes these tools:
 
 ### Running Tests
 ```bash
-uv run pytest tests/
+python -m compileall app.py portfolio scripts tests
+python -m pytest -q tests/test_trading_ui_flow.py tests/test_trading_features.py
+python -m pytest -q
 ```
 
 ### Adding a New Agent

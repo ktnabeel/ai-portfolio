@@ -14,7 +14,7 @@ Key tabs:
 - **Sentiment Analyzer** — Product review sentiment analysis on Amazon reviews
 - **Insurance Underwriting** — Agentic underwriting assistant with 4-dimension risk assessment (Health, Occupation, Lifestyle, Financial), policy context builder, and chain-of-thought decision engine
 - **TradingAgents Manager** — FastAPI portfolio manager orchestrating LangGraph agents (Security → Risk/Sentiment → Regime → Decision → Execution)
-- **Trading** — Multi-agent options trading via LangGraph (Security → Risk/Sentiment → Regime → Decision → Execution), MCP paper-trading server, Black-Scholes pricing
+- **Trading** — Multi-agent options trading via LangGraph (Security → Risk/Sentiment → Regime → Decision → Human Review → Execution), hoverable pipeline traces, MCP paper-trading server, Black-Scholes pricing
 
 ## Development Commands
 
@@ -93,7 +93,7 @@ ai-portfolio/
 │       ├── options/        # Black-Scholes pricing, Polygon.io options client
 │       ├── scrapers/       # CNN Fear & Greed, news scrapers
 │       ├── mcp/            # MCP paper-trading server + broker
-│       ├── ui/             # Gradio UI + TRADING_CSS
+│       ├── ui/             # Gradio UI + TRADING_CSS, HITL review, pipeline trace cards
 │       └── docs/           # Trading-specific README / ARCHITECTURE / FLOWS
 ├── scripts/                # Admin scripts (seed_templates, add_project, export_static, config_value)
 └── README.md
@@ -129,8 +129,16 @@ Managed via `uv` with `pyproject.toml`. Key packages:
 - `numpy`, `scikit-learn` — ML/embeddings
 - `requests` — TMDB / scraping HTTP client
 - `pyyaml` — Config parsing
-- `langgraph`, `langchain-openai` — Trading-agent orchestration (GPT-4o reasoning)
+- `langgraph`, `langchain-openai`, `langchain-anthropic` — Trading-agent orchestration with OpenAI/Anthropic model selection
 - `yfinance` — Financial / trading market data
 - `beautifulsoup4` — CNN Fear & Greed + news scraping
 
 See `portfolio/trading/docs/` for trading-subsystem usage, architecture, and flow docs.
+
+## Trading UI Notes
+
+- The Trading Desk runs in two phases: `Run Multi-Agent Analysis` stops after the Decision Agent, then a tradeable recommendation exposes approval/rejection controls.
+- The pipeline map is the primary audit surface. Each agent tile has hover/focus input and output traces; long traces scroll inside the tooltip.
+- Top-row pipeline tooltips open below their tiles so Regime Detection and other long summaries remain visible. Bottom-row tiles open upward on desktop and stack below on smaller screens.
+- After `Execute Trade`, the order confirmation card renders in the left control panel under the review controls. The right trace remains focused on MCP connectivity/tool-call details.
+- Re-running analysis, rejecting a trade, choosing No Trade, resetting the account, or hitting an invalid execution state clears stale order confirmation HTML.

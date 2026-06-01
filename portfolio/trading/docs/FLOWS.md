@@ -1,6 +1,6 @@
 # Trading Workflow — Detailed Flows
 
-## Main Flow: Symbol → Execution
+## Main Flow: Symbol → Human Review → Execution
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -8,7 +8,7 @@
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Input:   "AAPL"                                                          │
 │ Action:  yfinance fetch → validate symbol → get company profile          │
-│ LLM:     GPT-4o reasons about company position, sector, optionability    │
+│ LLM:     Selected provider/model reasons about company and optionability │
 │ Output:  SecurityInfo { name, sector, marketCap, price, isOptionable }   │
 │                                                                          │
 │ Fallback: If yfinance fails, return unknown company with error message.  │
@@ -29,7 +29,7 @@
 │      - Classify each headline: Positive / Negative / Neutral             │
 │      - Cap at 8 items                                                    │
 │                                                                          │
-│ LLM:     GPT-4o synthesizes Fear & Greed + news into:                    │
+│ LLM:     Selected provider/model synthesizes Fear & Greed + news into:   │
 │          - Market Trend summary (2-3 sentences)                          │
 │          - Risk Level (LOW / MODERATE / HIGH)                            │
 │          - Key driving factors (3-5 bullets)                             │
@@ -51,7 +51,7 @@
 │      - 20-day annualized volatility                                      │
 │      - 50-day SMA slope (trend direction)                                │
 │                                                                          │
-│ LLM:     GPT-4o classifies regime using indicators + sentiment context:  │
+│ LLM:     Selected provider/model classifies regime using indicators:     │
 │          - BULL:  Price > SMAs, RSI 55-70, positive slope, low vol      │
 │          - BEAR:  Price < SMAs, RSI < 45, negative slope, high vol      │
 │          - NEUTRAL: Mixed signals, RSI 45-55, sideways                  │
@@ -84,7 +84,7 @@
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Input:   SecurityInfo + RiskSentimentOutput + RegimeOutput + OptionChain │
 │                                                                          │
-│ LLM:     GPT-4o selects optimal strategy using comprehensive context:    │
+│ LLM:     Selected provider/model selects strategy using full context:    │
 │                                                                          │
 │   Decision Matrix:                                                       │
 │   ┌──────────┬───────────┬───────────┬──────────────┐                   │
@@ -107,12 +107,23 @@
 └──────────────────────────────────────────────────────────────────────────┘
                                     ↓
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ STEP 6: EXECUTION                                                        │
+│ STEP 6: HUMAN REVIEW                                                     │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ Action:                                                                  │
-│   a) If NO_TRADE: Skip execution, display rationale + account status     │
+│   a) If NO_TRADE: Skip approval controls and clear confirmation state.   │
 │                                                                          │
-│   b) Otherwise:                                                          │
+│   b) If tradeable: Show left-panel review controls:                      │
+│      - Execute Trade: approve the saved analysis state                    │
+│      - Reject Trade: record optional rejection reason                     │
+│                                                                          │
+│ Output:  Approved execution request, rejection record, or No Trade path  │
+└──────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STEP 7: EXECUTION                                                        │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Action:                                                                  │
+│   a) Approved strategy only:                                             │
 │      - Build MCP tool call: place_option_order {                         │
 │          symbol, strategy, strike, expiration, optionType, quantity }    │
 │      - Submit to MCP Trading Server                                      │
@@ -121,12 +132,49 @@
 │        · Checks available cash                                           │
 │        · Creates position, deducts cash + commission                     │
 │        · Returns OrderConfirmation                                       │
-│      - Display fill price, total cost, remaining cash, P&L               │
+│                                                                          │
+│   b) UI placement:                                                       │
+│      - Left panel: full order confirmation card                          │
+│      - Right trace: MCP connectivity and tool-call details only          │
+│      - Account summary: balances, positions, history, rejection log      │
 │                                                                          │
 │ Output:  ExecutionResult { orderRequest, confirmation, pnlEstimate }     │
 │                                                                          │
-│ Fallback: If MCP call fails, return rejected order with error message.   │
+│ Fallback: If MCP call fails, show an execution error card and preserve   │
+│           MCP call details in the right trace.                           │
 └──────────────────────────────────────────────────────────────────────────┘
+```
+
+## UI Flow
+
+```
+Run Multi-Agent Analysis
+    │
+    ├─ Builds pipeline map with hover/focus traces for every tile
+    │  ├─ Input section: upstream inputs, provider/model, broker context
+    │  └─ Output section: stage result, rationale, status, or pending text
+    │
+    ├─ Top-row tooltips open below their tiles
+    ├─ Bottom-row tooltips open upward on desktop
+    └─ Long trace bodies scroll inside the tooltip
+
+Decision Agent result
+    │
+    ├─ No Trade
+    │  ├─ No approval controls
+    │  ├─ Execution is skipped
+    │  └─ Left confirmation slot is cleared
+    │
+    └─ Tradeable strategy
+       ├─ Show Human Review controls in the left panel
+       ├─ Execute Trade
+       │  ├─ Submit MCP paper order
+       │  ├─ Render full order confirmation in left panel
+       │  └─ Render MCP tool-call details in right trace
+       └─ Reject Trade
+          ├─ Persist rejection reason
+          ├─ Skip MCP order placement
+          └─ Clear left confirmation slot
 ```
 
 ## MCP Tool Call Flow
@@ -163,16 +211,20 @@ LLM Agent                MCP Server                Paper Broker
 | Options | Polygon API down | Falls back to Black-Scholes synthetic chain |
 | Options | No API key set | Uses synthetic chain by default |
 | Decision | LLM API error | Uses rule-based fallback decision matrix |
+| Human Review | User rejects recommendation | Records rejection history, skips MCP order, clears confirmation slot |
+| Human Review | Invalid saved analysis state | Shows invalid-state error, clears confirmation slot |
+| Human Review | No Trade recommendation | Skips execution and clears confirmation slot |
 | Execution | MCP call fails | Returns rejected order with error message |
 | Execution | Insufficient cash | Returns rejected order with cash details |
 
 ## LLM Reasoning Transparency
 
-Every agent's `reasoning` field is displayed in the UI. The LLM explains:
+Every agent's `reasoning` field is displayed in the UI through agent cards and pipeline hover traces. The LLM explains:
 - **Security Agent**: Why this is a valid symbol, company context
 - **Risk/Sentiment Agent**: Fear & Greed interpretation, news impact synthesis
 - **Regime Agent**: Why the regime was classified as Bull/Bear/Neutral
 - **Decision Agent**: Why the specific strategy was chosen over alternatives
-- **Execution Agent**: Order confirmation details and context
+- **Human Review**: Whether the user approved or rejected the recommendation
+- **Execution Agent**: MCP order status, order ID, fill details, and account context
 
 This provides full audit trail for every trading decision.

@@ -7,7 +7,7 @@
 | **Language** | Python 3.11+ with full type hints |
 | **UI Framework** | Gradio (Blocks API, custom CSS, theme toggling) |
 | **ML / Linear Algebra** | NumPy, scikit-learn (TF-IDF, TruncatedSVD, cosine similarity) |
-| **Agent Orchestration** | LangGraph, LangChain, OpenAI GPT-4o |
+| **Agent Orchestration** | LangGraph, LangChain, OpenAI, Anthropic |
 | **API Integration** | TMDB, Polygon.io, yfinance, CNN Fear & Greed scraping |
 | **Quant / Pricing** | Black-Scholes options pricing, synthetic chain generation |
 | **Protocols** | Model Context Protocol (MCP) paper-trading server |
@@ -56,13 +56,16 @@
 - Sample-data fallback when no live source is configured
 
 ### 📈 Trading
-- **Five-agent LangGraph pipeline**: Security → Risk/Sentiment → Regime → Decision → Execution
-- **GPT-4o reasoning** per agent with full rationale surfaced in the UI
+- **Five-agent LangGraph pipeline with human review gate**: Security → Risk/Sentiment → Regime → Decision → Human Review → Execution
+- **OpenAI/Anthropic reasoning** per agent with full rationale surfaced in the UI
+- **Hoverable pipeline audit map** with per-agent input/output traces, scrollable tooltips, and path summaries
+- **Human-in-the-loop execution review** with approve/reject controls before paper orders are sent
+- **Dedicated order confirmation panel** separate from MCP connectivity/tool-call traces
 - **Options strategies**: Long Call, Long Put, Long Strangle, No-Trade
 - **Black-Scholes pricing** for synthetic option chains when Polygon.io is unavailable
 - **CNN Fear & Greed + news scrapers** feeding the risk/sentiment agent
 - **MCP paper-trading server**: `place_option_order`, `get_account_status`, `cancel_order`, `reset_account` ($100k starting balance, $0.65/contract commission)
-- **Graceful degradation**: rule-based fallbacks if OpenAI / Polygon / yfinance are unavailable
+- **Graceful degradation**: rule-based fallbacks if LLM providers / Polygon / yfinance are unavailable
 
 ## Design Patterns
 - Immutable data models (`@dataclass(frozen=True)`)

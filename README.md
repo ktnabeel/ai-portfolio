@@ -23,7 +23,7 @@ Python-based portfolio landing page for public AI project tiles. The live local 
 - **Movie Recommendations** — Embeddings, collaborative filtering, and preference parsing
 - **Sentiment Analyzer** — Local business review sentiment analysis
 - **Financial Agent** — Multi-agent stock and portfolio analysis
-- **Trading Desk** — Options trading workflow with human-in-the-loop paper execution
+- **Trading Desk** — Options workflow with hoverable agent pipeline traces, human-in-the-loop paper execution, and simulated account tracking
 
 ## Run Locally
 
