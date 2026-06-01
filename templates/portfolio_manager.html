@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section app-window">
+  <div class="app-window-header">
+    <div>
+      <p class="eyebrow">Portfolio Manager</p>
+      <h1>Multi-Agent Market Analysis</h1>
+      <p class="page-subtitle">Security, sentiment, regime, risk, and portfolio decision agents coordinated into one review.</p>
+    </div>
+    <span class="app-window-badge">FastAPI</span>
+  </div>
+
+  <form method="post" action="/portfolio-manager" class="floating-panel compact-form">
+    <label class="form-label" for="symbol">Ticker Symbol</label>
+    <div class="inline-form">
+      <input class="form-input" type="text" id="symbol" name="symbol" value="{{ symbol|default('AAPL') }}" placeholder="AAPL">
+      <button class="btn-primary btn-compact" type="submit">Analyze</button>
+    </div>
+  </form>
+
+  {% if decision_html %}
+  <div class="results-area manager-results">
+    <div class="floating-panel">{{ decision_html|safe }}</div>
+    <div class="floating-panel">{{ cards_html|safe }}</div>
+    <div class="floating-panel">{{ log_html|safe }}</div>
+  </div>
+  {% else %}
+  <div class="floating-panel empty-state">
+    <h3>Ready to analyze</h3>
+    <p>Enter a ticker to run the portfolio manager pipeline.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

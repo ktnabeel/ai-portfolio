@@ -1,4 +1,5 @@
 from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,23 +17,29 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "site": {
         "title": "AI Project Portfolio",
         "meta_description": "AI project portfolio for applied machine learning, agents, automation, and product prototypes.",
-        "brand": "AI Portfolio",
-        "brand_mark": "AI",
+        "brand": "neurons.fyi",
+        "brand_mark": "N",
         "kicker": "Applied AI Portfolio",
         "headline": "Python AI projects for agents, automation, and analytics.",
         "side_copy": "A public LinkedIn-ready portfolio focused on practical AI systems, workflow automation, and decision support prototypes.",
         "intro_kicker": "Portfolio Workspace",
         "intro_headline": "Selected AI builds presented as concise case studies.",
-        "intro_copy": "Each project tile is designed for fast review: what it does, where AI is applied, the Python stack, and the next link a recruiter or collaborator would expect.",
+        "intro_copy": "Each project tile is designed for fast review: the workflow, architecture, AI role, and production proof behind it.",
         "project_kicker": "Project Index",
         "project_heading": "AI project tiles",
         "status_label": "Public showcase",
         "linkedin_url": "https://www.linkedin.com/",
     },
     "stats": [
-        {"label": "Projects", "value": "7"},
-        {"label": "Stack", "value": "Python"},
-        {"label": "Deploy", "value": "HF + Vercel"},
+        {"label": "AI demos", "value": "7"},
+        {"label": "Agent workflows", "value": "5+"},
+        {"label": "VPS deploy", "value": "Linux"},
+    ],
+    "proof_strip": [
+        {"label": "Agent Architecture", "value": "LangGraph pipelines, tool calls, fallback paths"},
+        {"label": "Production Wiring", "value": "FastAPI surfaces, Linux deploy scripts, health checks"},
+        {"label": "Reliability", "value": "Typed Pydantic models, pytest coverage, cached external data"},
+        {"label": "Domain Range", "value": "Finance, insurance, NLP, recommendations"},
     ],
     "tabs": {
         "trading_agents": "Portfolio Manager",
@@ -150,6 +157,7 @@ def load_config(path: str | Path = CONFIG_PATH) -> dict[str, Any]:
         config["site"]["intro_headline"] = config["site"]["headline"]
     config["server"]["port"] = int(config["server"]["port"])
     config["server"]["host"] = str(config["server"]["host"])
+    config["site"].setdefault("copyright", f"© {datetime.now().year} neurons.fyi")
     _derive_project_tab_links(config)
     return config
 

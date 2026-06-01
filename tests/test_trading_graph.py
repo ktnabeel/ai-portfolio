@@ -17,6 +17,7 @@ from portfolio.trading.graph.trading_graph import (
     _node_decision,
     _node_execution,
 )
+from portfolio.trading.mcp.trading_server import MCPResponse
 from portfolio.trading.models import (
     ExecutionResult,
     FearGreedData,
@@ -126,6 +127,17 @@ def mock_strategy_call():
         breakeven="$190.20",
         alternatives=["No Trade"],
     )
+
+
+@pytest.fixture(autouse=True)
+def mock_graph_mcp_server():
+    """Default graph tests to the direct option-chain fallback unless overridden."""
+    with patch("portfolio.trading.graph.trading_graph.MCPTradingServer") as mock:
+        mock.return_value.call_tool.return_value = MCPResponse(
+            success=False,
+            error="MCP market data disabled in test",
+        )
+        yield mock
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -241,6 +253,107 @@ class TestNodeOutputs:
             result = _node_regime(state)
             assert result["regime"] == mock_regime
             assert result["stage"] == "regime"
+
+    def test_regime_node_uses_mcp_market_data(self):
+        state = {"symbol": "AAPL", "security": None, "sentiment": None,
+                 "regime": None, "options_chain": None, "strategy": None,
+                 "execution": None, "error": "", "stage": "init",
+                 "messages": [], "log": []}
+        history = [
+            {
+                "date": f"2026-01-{(i % 28) + 1:02d}",
+                "open": 100 + i,
+                "high": 101 + i,
+                "low": 99 + i,
+                "close": 100 + i,
+                "volume": 1_000_000,
+            }
+            for i in range(100)
+        ]
+        payload = {
+            "symbol": "SPY",
+            "history": history,
+            "source": "yfinance",
+            "freshness": "2026-05-31T00:00:00+00:00",
+            "is_realtime": False,
+            "warning": "Yahoo Finance OHLC data may be delayed.",
+        }
+
+        with patch("portfolio.trading.agents.regime_agent.MCPTradingServer") as mock_mcp:
+            mock_mcp.return_value.call_tool.return_value = MCPResponse(success=True, data=payload)
+            result = _node_regime(state)
+
+        assert result["stage"] == "regime"
+        assert result["regime"].regime == MarketRegime.BULL
+        assert result["regime"].indicators["source"] == "yfinance"
+        assert result["regime"].indicators["freshness"] == "2026-05-31T00:00:00+00:00"
+        mock_mcp.return_value.call_tool.assert_called_once()
+
+    def test_regime_node_falls_back_to_neutral_when_mcp_and_yfinance_fail(self):
+        state = {"symbol": "AAPL", "security": None, "sentiment": None,
+                 "regime": None, "options_chain": None, "strategy": None,
+                 "execution": None, "error": "", "stage": "init",
+                 "messages": [], "log": []}
+
+        with patch("portfolio.trading.agents.regime_agent.MCPTradingServer") as mock_mcp, \
+             patch("portfolio.trading.agents.regime_agent.yf.Ticker") as mock_ticker:
+            mock_mcp.return_value.call_tool.return_value = MCPResponse(
+                success=False,
+                error="MCP unavailable",
+            )
+            mock_ticker.side_effect = RuntimeError("Yahoo unavailable")
+            result = _node_regime(state)
+
+        assert result["stage"] == "regime"
+        assert result["regime"].regime == MarketRegime.NEUTRAL
+        assert result["regime"].confidence == 0.3
+        assert result["regime"].indicators["source"] == "yfinance"
+        assert "MCP unavailable" in result["regime"].indicators["warning"]
+
+    def test_fetch_chain_node_uses_mcp_option_chain(self, mock_option_chain, mock_graph_mcp_server):
+        state = {"symbol": "AAPL", "security": None, "sentiment": None,
+                 "regime": None, "options_chain": None, "strategy": None,
+                 "execution": None, "error": "", "stage": "init",
+                 "messages": [], "log": []}
+        payload = mock_option_chain.model_dump()
+        payload.update({
+            "source": "yfinance",
+            "freshness": "2026-05-31T00:00:00+00:00",
+            "is_realtime": False,
+            "warning": "Yahoo Finance option chain may be delayed.",
+        })
+        mock_graph_mcp_server.return_value.call_tool.return_value = MCPResponse(
+            success=True,
+            data=payload,
+        )
+
+        with patch("portfolio.trading.graph.trading_graph.fetch_option_chain") as fetch:
+            result = _node_fetch_chain(state)
+
+        assert result["stage"] == "options_chain"
+        assert result["options_chain"].symbol == "AAPL"
+        assert result["options_chain_metadata"]["source"] == "yfinance"
+        fetch.assert_not_called()
+
+    def test_fetch_chain_node_falls_back_when_mcp_fails(self, mock_option_chain, mock_graph_mcp_server):
+        state = {"symbol": "AAPL", "security": None, "sentiment": None,
+                 "regime": None, "options_chain": None, "strategy": None,
+                 "execution": None, "error": "", "stage": "init",
+                 "messages": [], "log": []}
+        mock_graph_mcp_server.return_value.call_tool.return_value = MCPResponse(
+            success=False,
+            error="MCP unavailable",
+        )
+
+        with patch("portfolio.trading.graph.trading_graph.fetch_option_chain") as fetch:
+            fetch.return_value = mock_option_chain
+            result = _node_fetch_chain(state)
+
+        assert result["stage"] == "options_chain"
+        assert result["options_chain"] == mock_option_chain
+        assert result["options_chain_metadata"]["source"] == "yfinance"
+        assert "MCP unavailable" in result["options_chain_metadata"]["warning"]
+        fetch.assert_called_once_with("AAPL")
 
     def test_decision_node_writes_strategy(self, mock_security, mock_sentiment,
                                             mock_regime, mock_option_chain, mock_strategy_call):

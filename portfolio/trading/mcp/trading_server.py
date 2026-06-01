@@ -15,11 +15,15 @@ and the server processes tool calls through a defined protocol.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 
+import yfinance as yf
+
 from .broker import close_position, execute_paper_trade, get_account, reset_account
+from ..options.polygon_client import fetch_option_chain_with_metadata
 from ..models import (
     OrderConfirmation,
     OrderRequest,
@@ -41,6 +45,60 @@ MCP_TOOLS = [
             "type": "object",
             "properties": {},
             "required": [],
+        },
+    },
+    {
+        "name": "get_market_quote",
+        "description": "Read-only market quote lookup for a symbol with source and freshness metadata.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "The stock or ETF ticker symbol (e.g., 'AAPL' or 'SPY').",
+                },
+            },
+            "required": ["symbol"],
+        },
+    },
+    {
+        "name": "get_market_regime_data",
+        "description": "Read-only OHLC market data used by the Regime Detection agent.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "The market proxy ticker symbol. Defaults to SPY.",
+                },
+                "period": {
+                    "type": "string",
+                    "description": "Yahoo Finance history period. Defaults to 6mo.",
+                },
+                "interval": {
+                    "type": "string",
+                    "description": "Yahoo Finance history interval. Defaults to 1d.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "get_option_chain",
+        "description": "Read-only options chain lookup for a symbol and optional expiration.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "symbol": {
+                    "type": "string",
+                    "description": "The underlying stock symbol (e.g., 'AAPL').",
+                },
+                "expiration": {
+                    "type": "string",
+                    "description": "Optional expiration date in YYYY-MM-DD format.",
+                },
+            },
+            "required": ["symbol"],
         },
     },
     {
@@ -164,6 +222,9 @@ class MCPTradingServer:
     def __init__(self):
         self._tools: dict[str, Callable] = {
             "get_account_status": self._handle_account_status,
+            "get_market_quote": self._handle_market_quote,
+            "get_market_regime_data": self._handle_market_regime_data,
+            "get_option_chain": self._handle_option_chain,
             "place_option_order": self._handle_place_order,
             "cancel_order": self._handle_cancel_order,
             "get_order_history": self._handle_order_history,
@@ -211,6 +272,21 @@ class MCPTradingServer:
         if name == "get_account_status":
             pos = result.get("position_count", 0) if isinstance(result, dict) else "?"
             return f"Account: {pos} position(s)"
+        if name == "get_market_quote":
+            symbol = result.get("symbol", args.get("symbol", "?")) if isinstance(result, dict) else args.get("symbol", "?")
+            price = result.get("price", "?") if isinstance(result, dict) else "?"
+            source = result.get("source", "?") if isinstance(result, dict) else "?"
+            return f"{symbol} quote: {price} via {source}"
+        if name == "get_market_regime_data":
+            symbol = result.get("symbol", args.get("symbol", "SPY")) if isinstance(result, dict) else args.get("symbol", "SPY")
+            rows = len(result.get("history", [])) if isinstance(result, dict) else "?"
+            return f"{symbol} regime data: {rows} bar(s)"
+        if name == "get_option_chain":
+            symbol = result.get("symbol", args.get("symbol", "?")) if isinstance(result, dict) else args.get("symbol", "?")
+            calls = len(result.get("calls", [])) if isinstance(result, dict) else "?"
+            puts = len(result.get("puts", [])) if isinstance(result, dict) else "?"
+            source = result.get("source", "?") if isinstance(result, dict) else "?"
+            return f"{symbol} chain: {calls} calls/{puts} puts via {source}"
         if name == "place_option_order":
             status = result.get("status", "?") if isinstance(result, dict) else "?"
             symbol = args.get("symbol", "?")
@@ -232,6 +308,48 @@ class MCPTradingServer:
         return calls
 
     # ── Tool Handlers ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _now_freshness() -> str:
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _safe_float(value: Any, default: float = 0.0) -> float:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        if math.isnan(number) or math.isinf(number):
+            return default
+        return number
+
+    @staticmethod
+    def _safe_int(value: Any, default: int = 0) -> int:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        if math.isnan(number) or math.isinf(number):
+            return default
+        return int(number)
+
+    @classmethod
+    def _quote_from_fast_info(cls, info: Any) -> dict[str, Any]:
+        if info is None:
+            return {}
+        if isinstance(info, dict):
+            return dict(info)
+        fields = [
+            "last_price",
+            "regular_market_price",
+            "previous_close",
+            "open",
+            "day_high",
+            "day_low",
+            "last_volume",
+            "currency",
+        ]
+        return {field: getattr(info, field) for field in fields if hasattr(info, field)}
 
     def _handle_account_status(self, _args: dict) -> dict:
         account = get_account()
@@ -257,6 +375,110 @@ class MCPTradingServer:
             ],
             "position_count": len(account.positions),
         }
+
+    def _handle_market_quote(self, args: dict) -> dict:
+        symbol = (args.get("symbol") or "").strip().upper()
+        if not symbol:
+            raise ValueError("symbol is required")
+
+        stock = yf.Ticker(symbol)
+        fast_info = self._quote_from_fast_info(getattr(stock, "fast_info", None))
+        info = getattr(stock, "info", {}) if not fast_info else {}
+        if not isinstance(info, dict):
+            info = {}
+
+        price = self._safe_float(
+            fast_info.get("last_price")
+            or fast_info.get("regular_market_price")
+            or info.get("regularMarketPrice")
+            or info.get("currentPrice")
+        )
+        previous_close = self._safe_float(
+            fast_info.get("previous_close") or info.get("previousClose")
+        )
+        open_price = self._safe_float(fast_info.get("open") or info.get("open"))
+        high = self._safe_float(fast_info.get("day_high") or info.get("dayHigh"))
+        low = self._safe_float(fast_info.get("day_low") or info.get("dayLow"))
+        volume = self._safe_int(fast_info.get("last_volume") or info.get("volume"))
+
+        if price <= 0:
+            hist = stock.history(period="1d")
+            if hist is not None and not hist.empty:
+                last = hist.iloc[-1]
+                price = self._safe_float(last.get("Close"))
+                open_price = open_price or self._safe_float(last.get("Open"))
+                high = high or self._safe_float(last.get("High"))
+                low = low or self._safe_float(last.get("Low"))
+                volume = volume or self._safe_int(last.get("Volume"))
+
+        if price <= 0:
+            raise RuntimeError(f"No quote data available for {symbol}")
+
+        return {
+            "symbol": symbol,
+            "price": price,
+            "previous_close": previous_close,
+            "open": open_price,
+            "high": high,
+            "low": low,
+            "volume": volume,
+            "currency": fast_info.get("currency") or info.get("currency", "USD"),
+            "source": "yfinance",
+            "freshness": self._now_freshness(),
+            "is_realtime": False,
+            "warning": "Yahoo Finance quotes may be delayed.",
+        }
+
+    def _handle_market_regime_data(self, args: dict) -> dict:
+        symbol = (args.get("symbol") or "SPY").strip().upper()
+        period = args.get("period") or "6mo"
+        interval = args.get("interval") or "1d"
+        stock = yf.Ticker(symbol)
+        hist = stock.history(period=period, interval=interval)
+        if hist is None or hist.empty:
+            raise RuntimeError(f"No market history available for {symbol}")
+
+        history: list[dict[str, Any]] = []
+        for index, row in hist.iterrows():
+            close = self._safe_float(row.get("Close"))
+            if close <= 0:
+                continue
+            if hasattr(index, "isoformat"):
+                row_date = index.isoformat()
+            else:
+                row_date = str(index)
+            history.append({
+                "date": row_date,
+                "open": self._safe_float(row.get("Open")),
+                "high": self._safe_float(row.get("High")),
+                "low": self._safe_float(row.get("Low")),
+                "close": close,
+                "volume": self._safe_int(row.get("Volume")),
+            })
+
+        if len(history) < 2:
+            raise RuntimeError(f"Insufficient market history available for {symbol}")
+
+        return {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "history": history,
+            "source": "yfinance",
+            "freshness": history[-1]["date"],
+            "is_realtime": False,
+            "warning": "Yahoo Finance OHLC data may be delayed.",
+        }
+
+    def _handle_option_chain(self, args: dict) -> dict:
+        symbol = (args.get("symbol") or "").strip().upper()
+        if not symbol:
+            raise ValueError("symbol is required")
+        expiration = args.get("expiration") or None
+        chain, metadata = fetch_option_chain_with_metadata(symbol, expiration)
+        data = chain.model_dump()
+        data.update(metadata)
+        return data
 
     def _handle_place_order(self, args: dict) -> dict:
         strategy_str = args.get("strategy", "No Trade")

@@ -90,7 +90,7 @@ class DecisionAgent:
         """
         # Use deterministic fallback when no LLM is available
         if self.llm is None:
-            analysis = self._fallback_decision(security, regime, chain)
+            analysis = self._fallback_decision(security, sentiment, regime, chain)
         else:
             analysis = self._llm_decision(security, sentiment, regime, chain)
 
@@ -211,24 +211,37 @@ class DecisionAgent:
         chain: OptionChain,
     ) -> str:
         """Make a strategy decision using the LLM (when available)."""
+        current_price = f"${security.current_price:.2f}" if security.current_price is not None else "N/A"
+        market_cap = f"${security.market_cap:,.0f}" if security.market_cap is not None else "N/A"
+        volatility = f"{regime.volatility_index:.1%}" if regime.volatility_index is not None else "N/A"
+        trend_strength = f"{regime.trend_strength:.1%}" if regime.trend_strength is not None else "N/A"
+        positive_news = sum(1 for n in sentiment.top_news if n.impact == "Positive")
+        negative_news = sum(1 for n in sentiment.top_news if n.impact == "Negative")
+        neutral_news = sum(1 for n in sentiment.top_news if n.impact == "Neutral")
+
         context = f"""
-═══ SECURITY ANALYSIS ═══
+═══ SECURITY AGENT OUTPUT ═══
 Symbol: {security.symbol} ({security.company_name})
 Sector: {security.sector} / {security.industry}
-Current Price: ${security.current_price:.2f}" if security.current_price else "N/A"
+Current Price: {current_price}
 Options Available: {'Yes' if security.is_optionable else 'No'}
-Market Cap: ${security.market_cap:,.0f}" if security.market_cap else "N/A"
+Market Cap: {market_cap}
+Security Reasoning: {security.reasoning}
 
-═══ MARKET SENTIMENT ═══
+═══ RISK & SENTIMENT AGENT OUTPUT ═══
 Fear & Greed: {sentiment.fear_greed.value}/100 ({sentiment.fear_greed.zone.value})
+Fear & Greed Source: {sentiment.fear_greed.source_method or 'CNN fetch'} from {sentiment.fear_greed.source_url or 'CNN Fear & Greed'}
 Market Trend: {sentiment.market_trend}
 Risk Level: {sentiment.risk_assessment}
-News Impact: {sum(1 for n in sentiment.top_news if n.impact == 'Positive')} positive, {sum(1 for n in sentiment.top_news if n.impact == 'Negative')} negative headlines
+News Impact: {positive_news} positive, {negative_news} negative, {neutral_news} neutral headlines
+Risk/Sentiment Reasoning: {sentiment.reasoning}
 
-═══ MARKET REGIME ═══
+═══ REGIME DETECTION AGENT OUTPUT ═══
 Regime: {regime.regime.value} (confidence: {regime.confidence:.0%})
 S&P 500 Trend: {regime.sp500_trend}
-Volatility: {regime.volatility_index:.1%}" if regime.volatility_index else "N/A"
+Volatility: {volatility}
+Trend Strength: {trend_strength}
+Regime Reasoning: {regime.reasoning}
 """
 
         if regime.indicators:
@@ -238,7 +251,7 @@ Volatility: {regime.volatility_index:.1%}" if regime.volatility_index else "N/A"
         atm_iv = atm_strike.implied_volatility if atm_strike else 0.30
 
         context += f"""
-═══ OPTIONS CHAIN ═══
+═══ OPTIONS CHAIN OUTPUT ═══
 Underlying: ${chain.underlying_price:.2f}
 ATM IV: {atm_iv:.1%}
 Available Strikes: {len(chain.calls)} calls, {len(chain.puts)} puts
@@ -259,7 +272,9 @@ Expirations: {', '.join(chain.expiration_dates[:4])}
 
         context += f"""
 ═══ DECISION TASK ═══
-Based on the above context, determine the optimal options strategy for {security.symbol}.
+Use all upstream outputs above: Security Agent, Risk & Sentiment Agent,
+Regime Detection Agent, and Options Chain. Determine the optimal options
+strategy for {security.symbol}.
 Respond with:
 STRATEGY: [Call/Put/Strangle/No Trade]
 CONFIDENCE: [0.0-1.0]
@@ -280,32 +295,63 @@ ALTERNATIVES: [1-2 alternatives considered]
             response = self.llm.invoke(messages)  # type: ignore[union-attr]
             return str(response.content) if hasattr(response, 'content') else str(response)
         except Exception:
-            return self._fallback_decision(security, regime, chain)
+            return self._fallback_decision(security, sentiment, regime, chain)
 
     def _fallback_decision(
         self,
         security: SecurityInfo,
+        sentiment: RiskSentimentOutput,
         regime: RegimeOutput,
         chain: OptionChain,
     ) -> str:
-        """Rule-based fallback when LLM is unavailable."""
+        """Rule-based fallback when LLM is unavailable.
+
+        The fallback intentionally consumes every upstream output so the
+        no-key path mirrors the LLM decision context instead of relying only
+        on regime classification.
+        """
         if not security.is_optionable:
             return "STRATEGY: No Trade\nCONFIDENCE: 0.9\nRATIONALE: This security does not have listed options."
 
-        if regime.regime == MarketRegime.BULL:
+        fear_greed = sentiment.fear_greed.value
+        risk_text = sentiment.risk_assessment.upper()
+        high_risk = "HIGH" in risk_text
+        elevated_iv = (regime.volatility_index or 0.2) > 0.25
+
+        if regime.regime == MarketRegime.BULL and fear_greed >= 40 and not (high_risk and fear_greed > 75):
             strategy = "Call"
-        elif regime.regime == MarketRegime.BEAR:
+        elif regime.regime == MarketRegime.BEAR or fear_greed <= 35:
             strategy = "Put"
         else:
-            strategy = "Strangle" if (regime.volatility_index or 0.2) > 0.25 else "No Trade"
+            strategy = "Strangle" if elevated_iv and security.is_optionable else "No Trade"
+
+        confidence = min(
+            0.95,
+            max(
+                0.35,
+                (
+                    regime.confidence * 0.55
+                    + (abs(fear_greed - 50) / 50) * 0.25
+                    + (0.10 if chain.calls and chain.puts else 0.0)
+                    + (0.10 if not high_risk else -0.05)
+                ),
+            ),
+        )
 
         return (
             f"STRATEGY: {strategy}\n"
-            f"CONFIDENCE: {regime.confidence:.0%}\n"
-            f"RATIONALE: Deterministic rule-based decision. Regime is {regime.regime.value} "
-            f"(confidence {regime.confidence:.0%}). "
-            f"{'Favouring bullish positions.' if regime.regime == MarketRegime.BULL else 'Favouring bearish positions.' if regime.regime == MarketRegime.BEAR else 'Uncertain direction — treading carefully.'}\n"
+            f"CONFIDENCE: {confidence:.0%}\n"
+            f"RATIONALE: Deterministic rule-based decision using all upstream agents. "
+            f"Security Agent confirmed {security.symbol} is "
+            f"{'optionable' if security.is_optionable else 'not optionable'}; "
+            f"Risk & Sentiment reported Fear & Greed {fear_greed}/100 "
+            f"({sentiment.fear_greed.zone.value}) with {sentiment.risk_assessment} risk; "
+            f"Regime Detection classified the market as {regime.regime.value} "
+            f"(confidence {regime.confidence:.0%}); Options Chain provided "
+            f"{len(chain.calls)} calls and {len(chain.puts)} puts around "
+            f"${chain.underlying_price:.2f}.\n"
             f"STRIKE: ${chain.underlying_price:.2f}\n"
             f"EXPIRATION: {chain.expiration_dates[0] if chain.expiration_dates else '30 DTE'}\n"
-            f"ALTERNATIVES: No Trade (preserve capital)"
+            f"ALTERNATIVES: No Trade (preserve capital); "
+            f"{'Strangle for elevated volatility' if elevated_iv else 'Wait for clearer volatility setup'}"
         )

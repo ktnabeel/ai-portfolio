@@ -12,3 +12,4 @@ logs/
 
 
 .vercel
+.sync.local.bat

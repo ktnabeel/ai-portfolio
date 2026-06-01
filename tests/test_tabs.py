@@ -13,6 +13,7 @@ from portfolio.financial import render_financial_tab
 from portfolio.claim_processing.render import render_claim_tab
 from portfolio.movie_recommender import render_movie_tab
 from portfolio.sentiment import render_sentiment_tab
+from portfolio.models import Project
 from portfolio.render import render_page
 from portfolio.trading_agents_manager import render_trading_agents_tab
 from portfolio.trading.ui import render_trading_tab
@@ -26,6 +27,71 @@ def test_portfolio_tab_renders_html(tmp_path: Path) -> None:
     assert isinstance(html, str)
     assert len(html) > 0
     assert "AI Engineering Portfolio" in html
+
+
+def test_gradio_project_open_buttons_use_tab_targets() -> None:
+    """Project Index Open buttons carry stable tab IDs and expected labels."""
+    projects = [
+        Project(
+            title="Portfolio Manager",
+            outcome="Multi-agent portfolio manager.",
+            tech_stack="Python, FastAPI, LangGraph",
+            status="Built",
+            tags=("Agents", "Finance"),
+        ),
+        Project(
+            title="Claim Processing",
+            outcome="AI-assisted claims workflow.",
+            tech_stack="Python, document AI",
+            status="Built",
+            tags=("Insurance", "Automation"),
+        ),
+        Project(
+            title="Insurance Underwriting Agent",
+            outcome="Agentic underwriting assistant.",
+            tech_stack="Python, rule-based NLP",
+            status="Built",
+            tags=("Insurance", "Risk"),
+        ),
+    ]
+
+    html = render_page(projects, mode="gradio")
+
+    assert 'data-tab-target="trading_agents"' in html
+    assert 'data-tab-label="Portfolio Manager"' in html
+    assert 'data-tab-target="claim"' in html
+    assert 'data-tab-label="Claim Processing"' in html
+    assert 'data-tab-target="underwriting"' in html
+    assert 'data-tab-label="Insurance Underwriting"' in html
+
+
+def test_gradio_tab_switch_script_is_included(tmp_path: Path) -> None:
+    """Gradio mode includes one delegated tab-switch handler."""
+    db_path = tmp_path / "portfolio.db"
+    init_db(db_path)
+
+    html = render_page(get_projects(db_path), mode="gradio")
+
+    assert "window.__portfolioTabSwitchBound" in html
+    assert "document.addEventListener('click'" in html
+    assert "closest('[data-tab-target]')" in html
+    assert "scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })" in html
+
+
+def test_theme_toggle_is_in_right_top_bar_group(tmp_path: Path) -> None:
+    """Theme toggle is separated from status/contact and aligned right."""
+    db_path = tmp_path / "portfolio.db"
+    init_db(db_path)
+
+    html = render_page(get_projects(db_path), mode="gradio")
+
+    assert '<div class="top-bar-left">' in html
+    assert '<div class="top-bar-right">' in html
+    right_group = html.split('<div class="top-bar-right">', 1)[1].split("</div>", 1)[0]
+    left_group = html.split('<div class="top-bar-left">', 1)[1].split("</div>", 1)[0]
+    assert 'class="theme-toggle"' in right_group
+    assert 'class="theme-toggle"' not in left_group
+    assert "Contact" in left_group
 
 
 def test_financial_tab_renders() -> None:

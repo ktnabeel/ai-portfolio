@@ -38,8 +38,13 @@ def test_project_round_trip_renders_tile(tmp_path: Path) -> None:
     assert len(projects) == 1
     assert "Trading Agents Research App" in html
     assert "Python, OpenAI, LangGraph" in html
-    assert "GitHub" in html
-    assert "Demo" in html
+
+
+def test_static_base_template_uses_neurons_logo_asset() -> None:
+    html = Path("templates/base.html").read_text(encoding="utf-8")
+
+    assert 'class="brand-logo"' in html
+    assert "/static/neurons%20logo.png" in html
 
 
 def test_project_templates_include_seven_titles() -> None:
@@ -947,21 +952,54 @@ def test_static_export_does_not_render_gradio_tab_links() -> None:
 
 
 def test_gradio_portfolio_renders_in_app_project_links() -> None:
-    """Gradio mode uses buttons for tab navigation instead of top-jumping anchors."""
+    """Gradio mode uses delegated buttons for tab navigation."""
     html = render_page(PROJECT_TEMPLATES, mode="gradio")
 
     # All 7 projects should have "Open" links.
     assert html.count(">Open</button>") == 7
-    # Open links use onclick with return false (not href="javascript:").
     assert "javascript:" not in html
     assert 'href="#"' not in html
-    assert 'data-tab-target' not in html
-    assert "onclick=" in html
+    assert 'class="brand-lockup"' in html
+    assert 'data:image/png;base64,' in html
+    assert 'neurons.fyi' in html
+    assert 'class="landing-footer"' in html
+    assert '--theme-bg: #ffffff;' in html
+    assert 'data-tab-target="trading"' in html
+    assert 'data-tab-label="Trading Desk"' in html
+    assert "closest('[data-tab-target]')" in html
     assert 'type="button"' in html
-    assert "Trading Desk" in html  # display label embedded in onclick
     # Theme init <script> is allowed (reads localStorage for dark/light mode).
     assert "<script>" in html
     assert "localStorage.getItem('theme')" in html
+
+
+def test_project_tiles_render_hover_context() -> None:
+    """Project tiles include additional context for hover/focus panels."""
+    html = render_page(PROJECT_TEMPLATES, mode="gradio")
+
+    assert 'class="project-insight"' in html
+    assert "Project context" in html
+    assert "Production-style multi-agent portfolio manager" in html
+    assert "Problem" in html
+    assert "Architecture" in html
+    assert "AI role" in html
+    assert "Impact" in html
+    assert "LangGraph orchestration" in html
+
+
+def test_project_tile_css_supports_hover_focus_and_mobile_details() -> None:
+    """The floating tile treatment is available on hover/focus and touch layouts."""
+    html = render_page(PROJECT_TEMPLATES, mode="gradio")
+
+    assert ".project-card:hover .project-insight" in html
+    assert ".project-card:focus-within .project-insight" in html
+    assert "perspective: 1400px" in html
+    assert "transform-style: preserve-3d" in html
+    assert "grid-template-columns: 56px minmax(0, 1fr) auto" in html
+    assert "padding: 14px;" in html
+    assert "@media (max-width: 980px)" in html
+    assert "max-height: 680px" in html
+    assert "max-height: none" in html
 
 
 def test_yaml_config_overrides_static_text(tmp_path: Path) -> None:

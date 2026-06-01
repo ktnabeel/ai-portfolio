@@ -46,6 +46,7 @@ class TradingState(TypedDict):
 
     # Options Chain (fetched by graph, not a separate agent)
     options_chain: Optional[OptionChain]
+    options_chain_metadata: dict[str, Any]
 
     # Agent 4: Strategy Decision
     strategy: Optional[StrategyDecision]

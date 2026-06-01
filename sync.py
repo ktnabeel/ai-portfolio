@@ -57,7 +57,7 @@ def local_sync():
         for line in stderr:
             print(f"REMOTE ERR: {line.strip()}")
             
-        print(f"\n✅ Sync Complete! Live at http://{IP}:7860")
+        print(f"\n✅ Sync Complete! Live at http://{IP}:7860 or https://neurons.fyi/")
     except Exception as e:
         print(f"Failed to connect to VPS: {e}")
     finally:

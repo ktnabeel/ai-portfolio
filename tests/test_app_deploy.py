@@ -113,13 +113,16 @@ def test_fastapi_health_and_home_page() -> None:
 
     home = client.get("/")
     assert home.status_code == 200
-    assert "Agent decisions first. Execution second." in home.text
     assert "Agent Pipeline Flow" in home.text
     assert "AI Engineer" in home.text
     assert "CNN Fear &amp; Greed" in home.text
+    assert "Agent Output" in home.text
+    assert "Decision Agent" in home.text
+    assert "EMA 8" in home.text
     assert "Security rationale" in home.text
     assert "Workflow" in home.text
     assert "System Snapshot" in home.text
+    assert "Live Market Context" not in home.text
 
 
 def test_place_close_and_reset_flow() -> None:

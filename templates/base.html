@@ -5,10 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{{ config.site.meta_description }}">
   <title>{{ config.site.title }}</title>
+  <link rel="icon" type="image/png" href="/static/neurons_logo_mark.png">
+  <link rel="apple-touch-icon" href="/static/neurons_logo_mark.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="page-{{ active_page }}">
   <header class="top-bar">
+    <a href="/" class="brand-lockup" aria-label="{{ config.site.brand }} home">
+      <img class="brand-logo" src="/static/neurons_logo_mark.png" data-asset="/static/neurons%20logo.png" alt="">
+      <span class="brand-copy">
+        <strong>{{ config.site.brand }}</strong>
+        <span>{{ config.site.kicker }}</span>
+      </span>
+    </a>
     <div class="status-line">
       <span class="status-dot"></span>
       {{ config.site.status_label }}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section app-window trading-window">
+  <div class="app-window-header">
+    <div>
+      <p class="eyebrow">Decision Review</p>
+      <h1>Agent Pipeline Flow{% if symbol %}: {{ symbol }}{% endif %}</h1>
+      <p class="page-subtitle">Click each pipeline stage to inspect the full trace behind the recommendation.</p>
+    </div>
+    <span class="app-window-badge">{{ mode|default('paper')|title }}</span>
+  </div>
+
+  {% if missing_run %}
+  <div class="floating-panel empty-state">
+    <h3>Analysis expired</h3>
+    <p>Run a new trading analysis to rebuild the decision workflow.</p>
+    <a class="btn-primary btn-compact" href="/trading">Start Analysis</a>
+  </div>
+  {% else %}
+  <div class="workflow-steps">
+    <span class="workflow-step complete">1 Configure</span>
+    <span class="workflow-step complete">2 Analyze</span>
+    <span class="workflow-step active">3 Decision Review</span>
+    <span class="workflow-step {% if account_visible %}complete{% endif %}">4 Paper Account</span>
+  </div>
+
+  <div class="decision-grid">
+    <aside class="floating-panel pipeline-panel">
+      <div class="flow-title">Agent Pipeline Flow</div>
+      <div class="pipeline-flow" role="list">
+        {% for item in trace_items %}
+        <button class="pipeline-node {% if loop.first %}active{% endif %}" type="button" data-trace-index="{{ loop.index0 }}" role="listitem">
+          <span class="pipeline-icon">{{ item.icon }}</span>
+          <span>{{ item.title }}</span>
+        </button>
+        {% endfor %}
+      </div>
+      <div class="execution-log-wrap">{{ status_html|safe }}</div>
+    </aside>
+
+    <main class="decision-main">
+      <div class="floating-panel decision-summary">
+        <h2>Recommendation</h2>
+        {{ decision_html|safe }}
+        <div class="btn-row decision-actions">
+          {% if mode == 'paper' and tradeable %}
+          <form method="post" action="/trading/execute/{{ run_id }}">
+            <button class="btn-primary btn-compact" type="submit">Execute Paper Trade</button>
+          </form>
+          {% endif %}
+          <form method="post" action="/trading/reject/{{ run_id }}" class="reject-form">
+            <input class="form-input" type="text" name="reason" placeholder="Optional rejection reason">
+            <button class="btn-secondary btn-compact" type="submit">Reject</button>
+          </form>
+          <a class="btn-secondary btn-compact" href="/trading">New Analysis</a>
+        </div>
+      </div>
+
+      <div class="floating-panel trace-panel">
+        <div class="trace-panel-heading">
+          <h2 id="trace-title">Trace</h2>
+        </div>
+        <div id="trace-content"></div>
+      </div>
+
+      {% if account_visible %}
+      <div class="floating-panel account-panel">
+        <h2>Simulated Account</h2>
+        {{ account_html|safe }}
+      </div>
+      {% endif %}
+    </main>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const traces = {{ trace_json|tojson }};
+function showTrace(index) {
+  const item = traces[index];
+  if (!item) return;
+  document.querySelectorAll('.pipeline-node').forEach((node) => node.classList.remove('active'));
+  const active = document.querySelector('[data-trace-index="' + index + '"]');
+  if (active) active.classList.add('active');
+  document.getElementById('trace-title').textContent = item.title + ' Trace';
+  document.getElementById('trace-content').innerHTML = item.html;
+}
+document.querySelectorAll('.pipeline-node').forEach((node) => {
+  node.addEventListener('click', () => showTrace(Number(node.dataset.traceIndex)));
+});
+showTrace(0);
+</script>
+{% endblock %}

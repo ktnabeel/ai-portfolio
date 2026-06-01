@@ -5,26 +5,26 @@ server:
 site:
   title: Nabeel's AI Project Portfolio
   meta_description: "AI project portfolio for applied machine learning,multi agent orchestration, automation, and product prototypes."
-  brand: AI Portfolio
-  brand_mark: NabAI
+  brand: neurons.fyi
+  brand_mark: N
   kicker: Applied AI Portfolio
   headline: "Building Autonomous Agents and Production-Ready AI Systems."
   side_copy: "An engineering-focused portfolio showcasing multi-agent orchestration, LLM pipelines, and automated decision support systems."
   intro_kicker: Portfolio Workspace
   intro_headline: "Selected AI builds presented as concise case studies."
-  intro_copy: "Each project tile is designed for fast review: what it does, where AI is applied, the Python stack"
+  intro_copy: "Each project tile is designed for fast review: the workflow, architecture, AI role, and production proof behind it."
   project_kicker: Project Index
   project_heading: AI Engineering Portfolio
   status_label: AI/ML Engineer | Agents and System Design Showcase
   linkedin_url: https://www.linkedin.com/in/ktnabeel
 
 stats:
-  - label: Projects
+  - label: AI demos
     value: "7"
-  - label: Stack
-    value: Python
-  - label: Deploy
-    value: HF + Vercel
+  - label: Agent workflows
+    value: "5+"
+  - label: VPS deploy
+    value: Linux
 
 # Tab display labels (tab_id → display name in the UI)
 # Tab order in this section controls the order in the Gradio UI.
@@ -71,6 +71,16 @@ projects:
       - FastAPI
       - LangGraph
     tab: trading_agents
+    project_summary: "Production-style multi-agent portfolio manager that turns market data, sentiment, and risk signals into explainable portfolio actions."
+    problem: "Investment decisions require synthesizing fragmented market, technical, sentiment, and risk context quickly."
+    architecture: "FastAPI and LangGraph orchestrate specialized agents for security analysis, sentiment, regime, decisioning, execution, and portfolio management."
+    ai_application: "LLM agents produce structured analysis and a final Buy/Sell/Hold recommendation with confidence and rationale."
+    impact: "Shows ability to design agentic workflows, API boundaries, and explainable decision support for finance users."
+    proof_points:
+      - LangGraph orchestration
+      - FastAPI service surface
+      - Real-time yfinance data
+      - Structured portfolio rationale
   - key: trading
     title: Trading Desk
     description: "Multi-agent options trading desk with Black-Scholes pricing, MCP paper-trading server, and LangGraph-orchestrated agent pipeline for market analysis."
@@ -82,6 +92,16 @@ projects:
       - Trading
       - Options
     tab: trading
+    project_summary: "Options trading workbench combining quantitative pricing, market context, and agent-assisted trade review."
+    problem: "Options decisions need pricing math, market awareness, risk review, and a clear human approval path."
+    architecture: "LangGraph coordinates market, risk, regime, decision, and execution components with a Gradio control surface."
+    ai_application: "Agents analyze risk-reward and produce tradeable recommendations while keeping execution human-reviewed."
+    impact: "Demonstrates applied AI for regulated decision workflows where automation must remain auditable."
+    proof_points:
+      - Black-Scholes pricing
+      - Paper-trade execution
+      - MCP server integration
+      - Approval workflow
   - key: claim
     title: Claim Processing
     description: "AI-assisted workflow for reviewing claims, extracting details, and routing decisions."
@@ -92,6 +112,16 @@ projects:
       - Automation
       - Documents
     tab: claim
+    project_summary: "Insurance claim intake assistant that extracts facts, flags fraud indicators, scores severity, and routes next steps."
+    problem: "Claims teams spend time converting unstructured incident text into repeatable triage decisions."
+    architecture: "A deterministic NLP and rules pipeline extracts claim fields, applies red-flag checks, classifies severity, and recommends routing."
+    ai_application: "The system applies AI-style document understanding patterns with explainable rules suitable for operational review."
+    impact: "Highlights automation design for insurance workflows where speed, consistency, and auditability matter."
+    proof_points:
+      - Free-text extraction
+      - Fraud red flags
+      - Severity classification
+      - Batch processing
   - key: underwriting
     title: Insurance Underwriting Agent
     description: "Agentic underwriting assistant that extracts application data, scans for risk factors across health/occupation/lifestyle/financial dimensions, builds policy context, and generates structured decisions with chain-of-thought reasoning."
@@ -102,6 +132,16 @@ projects:
       - Agents
       - Risk
     tab: underwriting
+    project_summary: "Underwriting assistant that reads applications, evaluates multidimensional risk, and returns structured policy decisions."
+    problem: "Underwriters need consistent extraction, risk factor discovery, and clear reasoning from incomplete application text."
+    architecture: "A four-dimension risk engine evaluates health, occupation, lifestyle, and financial signals, then builds policy context."
+    ai_application: "Agentic reasoning converts unstructured applicant details into risk scores, decisions, and auditable recommendations."
+    impact: "Shows domain modeling, decision logic, and explainability for high-stakes insurance workflows."
+    proof_points:
+      - 40+ risk rules
+      - Risk score 0-100
+      - Policy context builder
+      - Batch underwriting
   - key: sentiment
     title: Product Review Sentiment Analyzer
     description: "Sentiment analysis app for summarizing customer reviews and product feedback patterns."
@@ -112,6 +152,16 @@ projects:
       - Sentiment
       - Analytics
     tab: sentiment
+    project_summary: "Customer feedback analytics tool that turns product reviews into sentiment, keywords, and product-level summaries."
+    problem: "Teams need to understand review patterns at scale without manually reading every customer comment."
+    architecture: "Review ingestion, sentiment classification, aggregation, keyword extraction, and visualization are packaged in a Gradio app."
+    ai_application: "NLP classification and summarization patterns convert unstructured reviews into structured product insights."
+    impact: "Demonstrates practical NLP for product, support, and operations teams."
+    proof_points:
+      - Per-review sentiment
+      - Product rollups
+      - Keyword extraction
+      - Visual distributions
   - key: financial
     title: Finance Planning
     description: "AI planning assistant for budgeting, scenario analysis, and financial goal tracking."
@@ -122,6 +172,16 @@ projects:
       - Planning
       - Assistant
     tab: financial
+    project_summary: "Financial planning assistant for portfolio analysis, budgeting scenarios, and goal-oriented decision support."
+    problem: "Personal and portfolio finance decisions require combining goals, market context, and risk into clear next actions."
+    architecture: "Financial analysis modules collect market data, compute signals, and present recommendations through an interactive UI."
+    ai_application: "Agent-style analysis blends technical, fundamental, sentiment, and risk signals for planning guidance."
+    impact: "Shows how AI workflows can support finance users with transparent, scenario-driven outputs."
+    proof_points:
+      - Budget scenarios
+      - Goal tracking
+      - Market data
+      - Risk scoring
   - key: movie
     title: Movie Recommendations
     description: "AI-powered movie recommender combining two-tower embeddings, SVD collaborative filtering, and LLM-style preference extraction from TMDB data."
@@ -132,6 +192,16 @@ projects:
       - ML
       - NLP
     tab: movie
+    project_summary: "Recommendation app that translates natural-language preferences into personalized movie suggestions."
+    problem: "Users express taste in messy language, while recommenders need structured signals and ranked outputs."
+    architecture: "A hybrid recommender combines preference parsing, embeddings, collaborative filtering, and TMDB metadata."
+    ai_application: "NLP-style parsing extracts taste signals and blends them with ML recommenders for ranked suggestions."
+    impact: "Demonstrates recommendation systems, ensemble modeling, and user-centered AI interaction."
+    proof_points:
+      - Two-tower embeddings
+      - SVD filtering
+      - Preference parser
+      - TMDB integration
 
 capabilities:
   - title: Agents

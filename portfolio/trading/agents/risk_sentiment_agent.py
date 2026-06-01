@@ -72,7 +72,8 @@ class RiskSentimentAgent:
             f"{fear_greed.description}\n"
             f"RISK LEVEL: {'HIGH' if fear_greed.value < 30 or fear_greed.value > 70 else 'MODERATE'}\n"
             f"KEY FACTORS:\n"
-            f"  - Fear & Greed Index at {fear_greed.value}/100 ({fear_greed.zone.value})\n"
+            f"  - Fear & Greed Index at {fear_greed.value}/100 ({fear_greed.zone.value}) "
+            f"via {fear_greed.source_method or 'CNN page fetch'}\n"
             f"  - {len(news_items)} news headlines analyzed\n"
             + "".join(f"  - {n.headline[:100]}...\n" for n in news_items[:3])
         )
@@ -84,6 +85,9 @@ class RiskSentimentAgent:
             fg_context = f"""
 CNN Fear & Greed Index: {fear_greed.value}/100
 Zone: {fear_greed.zone.value}
+Source: {fear_greed.source_url or 'https://www.cnn.com/markets/fear-and-greed'}
+Fetch Method: {fear_greed.source_method or 'browser/http fallback'}
+Last Updated: {fear_greed.timestamp.isoformat()}
 Description: {fear_greed.description}
 """
 

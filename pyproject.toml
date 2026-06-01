@@ -22,6 +22,7 @@ dependencies = [
     "uvicorn>=0.30.0",
     "pydantic>=2.0.0",
     "langchain-anthropic>=1.4.4",
+    "playwright>=1.53.0",
 ]
 
 [dependency-groups]

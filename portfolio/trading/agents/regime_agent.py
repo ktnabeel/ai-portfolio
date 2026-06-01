@@ -15,7 +15,8 @@ Uses:
 
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 import numpy as np
 import yfinance as yf
@@ -23,6 +24,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models import BaseChatModel
 
 from .._llm import create_llm
+from ..mcp.trading_server import MCPTradingServer
 from ..models import MarketRegime, RegimeOutput, RiskSentimentOutput
 
 
@@ -58,6 +60,65 @@ class RegimeAgent:
     def __init__(self, llm: BaseChatModel | None = None):
         self.llm = llm  # None → deterministic / rule-based fallback
 
+    def _fetch_market_closes(self) -> tuple[np.ndarray | None, dict[str, Any]]:
+        """Read market history through MCP first, then direct yfinance fallback."""
+        mcp_warning = ""
+        try:
+            response = MCPTradingServer().call_tool(
+                "get_market_regime_data",
+                {"symbol": "SPY", "period": "6mo", "interval": "1d"},
+            )
+            if response.success and isinstance(response.data, dict):
+                history = response.data.get("history", [])
+                closes = np.array(
+                    [float(row["close"]) for row in history if float(row.get("close", 0)) > 0],
+                    dtype=float,
+                )
+                if len(closes) >= 50:
+                    metadata = {
+                        "source": response.data.get("source", "yfinance"),
+                        "freshness": response.data.get("freshness", ""),
+                        "is_realtime": bool(response.data.get("is_realtime", False)),
+                    }
+                    warning = response.data.get("warning")
+                    if warning:
+                        metadata["warning"] = warning
+                    return closes, metadata
+                mcp_warning = "MCP market data was incomplete."
+            else:
+                mcp_warning = response.error or "MCP market data unavailable."
+        except Exception as exc:
+            mcp_warning = str(exc)
+
+        try:
+            spy = yf.Ticker("SPY")
+            hist = spy.history(period="6mo")
+            if hist is not None and not hist.empty and len(hist) >= 50:
+                close = np.asarray(hist["Close"].values, dtype=float)
+                latest = hist.index[-1]
+                freshness = latest.isoformat() if hasattr(latest, "isoformat") else str(latest)
+                warning = "Yahoo Finance OHLC data may be delayed."
+                if mcp_warning:
+                    warning = f"MCP market-data unavailable; used direct yfinance fallback. {mcp_warning}"
+                return close, {
+                    "source": "yfinance",
+                    "freshness": freshness,
+                    "is_realtime": False,
+                    "warning": warning,
+                }
+        except Exception as exc:
+            if mcp_warning:
+                mcp_warning = f"{mcp_warning}; direct yfinance fallback failed: {exc}"
+            else:
+                mcp_warning = f"Direct yfinance fallback failed: {exc}"
+
+        return None, {
+            "source": "yfinance",
+            "freshness": datetime.now(timezone.utc).isoformat(),
+            "is_realtime": False,
+            "warning": mcp_warning or "Insufficient market data.",
+        }
+
     def analyze(
         self,
         sentiment: Optional[RiskSentimentOutput] = None,
@@ -70,22 +131,17 @@ class RegimeAgent:
         Returns:
             RegimeOutput with regime classification and confidence.
         """
-        # Fetch SPY data for S&P 500 analysis
-        spy = yf.Ticker("SPY")
-        try:
-            hist = spy.history(period="6mo")
-        except Exception:
-            hist = None
+        close, provider_metadata = self._fetch_market_closes()
 
-        if hist is None or hist.empty or len(hist) < 50:
+        if close is None or len(close) < 50:
             # Fallback with limited data
             return RegimeOutput(
                 regime=MarketRegime.NEUTRAL,
                 confidence=0.3,
+                indicators=provider_metadata,
                 reasoning="Insufficient market data to determine regime. Defaulting to Neutral.",
             )
 
-        close = hist["Close"].values
         current_price = float(close[-1])
 
         # Compute indicators
@@ -132,7 +188,13 @@ class RegimeAgent:
                 volatility_index=volatility,
                 trend_strength=abs(sma_slope),
                 sp500_trend="UP" if sma_slope > 0 else "DOWN",
-                indicators={"rsi": round(rsi, 1), "sma_50": round(sma_50, 2), "sma_200": round(sma_200, 2)},
+                indicators={
+                    "rsi": round(rsi, 1),
+                    "sma_50": round(sma_50, 2),
+                    "sma_200": round(sma_200, 2),
+                    "volatility": round(volatility, 4),
+                    **provider_metadata,
+                },
                 reasoning=det_analysis,
             )
 
@@ -171,7 +233,13 @@ Risk Assessment: {sentiment.risk_assessment}
                 volatility_index=volatility,
                 trend_strength=abs(sma_slope),
                 sp500_trend="UP" if sma_slope > 0 else "DOWN",
-                indicators={"rsi": round(rsi, 1), "sma_50": round(sma_50, 2), "sma_200": round(sma_200, 2)},
+                indicators={
+                    "rsi": round(rsi, 1),
+                    "sma_50": round(sma_50, 2),
+                    "sma_200": round(sma_200, 2),
+                    "volatility": round(volatility, 4),
+                    **provider_metadata,
+                },
                 reasoning=det_analysis,
             )
 
@@ -208,6 +276,7 @@ Risk Assessment: {sentiment.risk_assessment}
                 "sma_50": round(sma_50, 2),
                 "sma_200": round(sma_200, 2),
                 "volatility": round(volatility, 4),
+                **provider_metadata,
             },
             reasoning=analysis,
         )

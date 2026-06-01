@@ -34,6 +34,7 @@ from portfolio.trading.mcp.trading_server import (
     MCPTradingServer,
     MCP_TOOLS,
 )
+from portfolio.trading.models import OptionChain, OptionContract
 
 
 @pytest.fixture
@@ -44,10 +45,11 @@ def server():
 
 
 class TestToolDefinitions:
-    def test_all_six_tools_defined(self):
+    def test_all_tools_defined(self):
         tool_names = {t["name"] for t in MCP_TOOLS}
         expected = {"get_account_status", "place_option_order", "cancel_order",
-                     "get_order_history", "reset_account", "close_position"}
+                    "get_order_history", "reset_account", "close_position",
+                    "get_market_regime_data", "get_option_chain", "get_market_quote"}
         assert tool_names == expected
 
     def test_each_tool_has_parameters_schema(self):
@@ -63,7 +65,81 @@ class TestToolDefinitions:
 
     def test_server_exposes_tool_definitions(self):
         s = MCPTradingServer()
-        assert len(s.tool_definitions) == 6
+        assert len(s.tool_definitions) == 9
+
+
+class TestReadOnlyMarketData:
+    def test_market_quote_returns_metadata(self, server):
+        r = server.call_tool("get_market_quote", {"symbol": "AAPL"})
+        assert r.success
+        assert r.data["symbol"] == "AAPL"
+        assert r.data["price"] == 185.50
+        assert r.data["source"] == "yfinance"
+        assert r.data["freshness"]
+        assert r.data["is_realtime"] is False
+
+    def test_market_regime_data_returns_history(self, monkeypatch, server):
+        class _MockHistory:
+            empty = False
+
+            def iterrows(self):
+                for i in range(60):
+                    yield f"2026-01-{(i % 28) + 1:02d}", {
+                        "Open": 100 + i,
+                        "High": 101 + i,
+                        "Low": 99 + i,
+                        "Close": 100 + i,
+                        "Volume": 1_000_000 + i,
+                    }
+
+        class _HistoryTicker:
+            def __init__(self, symbol):
+                self.symbol = symbol
+
+            def history(self, period="6mo", interval="1d"):
+                return _MockHistory()
+
+        monkeypatch.setattr("portfolio.trading.mcp.trading_server.yf.Ticker", _HistoryTicker)
+
+        r = server.call_tool("get_market_regime_data", {"symbol": "SPY"})
+        assert r.success
+        assert r.data["symbol"] == "SPY"
+        assert r.data["source"] == "yfinance"
+        assert r.data["freshness"]
+        assert r.data["is_realtime"] is False
+        assert len(r.data["history"]) == 60
+        assert {"date", "open", "high", "low", "close", "volume"} <= set(r.data["history"][0])
+
+    def test_option_chain_returns_metadata(self, monkeypatch, server):
+        chain = OptionChain(
+            symbol="AAPL",
+            underlying_price=185.5,
+            expiration_dates=["2026-06-19"],
+            calls=[OptionContract(symbol="AAPL-C", strike=185, expiration="2026-06-19", option_type="call")],
+            puts=[OptionContract(symbol="AAPL-P", strike=180, expiration="2026-06-19", option_type="put")],
+        )
+
+        monkeypatch.setattr(
+            "portfolio.trading.mcp.trading_server.fetch_option_chain_with_metadata",
+            lambda symbol, expiration=None: (
+                chain,
+                {
+                    "source": "yfinance",
+                    "freshness": "2026-05-31T12:00:00+00:00",
+                    "is_realtime": False,
+                    "warning": "Yahoo Finance option chain may be delayed.",
+                },
+            ),
+        )
+
+        r = server.call_tool("get_option_chain", {"symbol": "AAPL"})
+        assert r.success
+        assert r.data["symbol"] == "AAPL"
+        assert r.data["source"] == "yfinance"
+        assert r.data["freshness"]
+        assert r.data["is_realtime"] is False
+        assert len(r.data["calls"]) == 1
+        assert len(r.data["puts"]) == 1
 
 
 class TestAccountStatus:
@@ -244,3 +320,15 @@ class TestErrorHandling:
     def test_response_has_timestamp(self, server):
         r = server.call_tool("get_account_status", {})
         assert r.timestamp is not None
+
+    def test_read_only_tool_failure_returns_mcp_response(self, server):
+        def boom(_args):
+            raise RuntimeError("market data down")
+
+        server._tools["get_market_quote"] = boom
+        r = server.call_tool("get_market_quote", {"symbol": "AAPL"})
+        assert not r.success
+        assert "market data down" in r.error
+
+        status = server.call_tool("get_account_status", {})
+        assert status.success

@@ -1,8 +1,28 @@
+from base64 import b64encode
 from html import escape
+from pathlib import Path
 from typing import Any
 
 from .config import load_config
 from .models import Project
+
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+LOGO_PATH = BASE_DIR / "static" / "neurons_logo_mark.png"
+_LOGO_DATA_URI: str | None = None
+
+
+def _logo_data_uri() -> str:
+    global _LOGO_DATA_URI
+    if _LOGO_DATA_URI is not None:
+        return _LOGO_DATA_URI
+    try:
+        encoded = b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    except OSError:
+        _LOGO_DATA_URI = ""
+    else:
+        _LOGO_DATA_URI = f"data:image/png;base64,{encoded}"
+    return _LOGO_DATA_URI
 
 
 def _tab_links_from_config(config: dict[str, Any]) -> dict[str, str]:
@@ -431,6 +451,13 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
     site = config["site"]
     capabilities = config["capabilities"]
     stats = config.get("stats", [])
+    proof_items = config.get("proof_strip", [])
+    logo_src = _logo_data_uri()
+    brand_logo = (
+        f'<img class="brand-logo" src="{logo_src}" alt="" aria-hidden="true">'
+        if logo_src
+        else f'<span class="brand-mark">{escape(str(site.get("brand_mark", "N")))}</span>'
+    )
 
     capabilities_html = "\n".join(
         f"<div><strong>{escape(str(item['title']))}</strong><span>{escape(str(item['description']))}</span></div>"
@@ -444,11 +471,35 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
         </div>"""
         for item in stats
     )
+    proof_html = "\n".join(
+        f"""<div class="proof-item">
+          <span class="proof-marker">{index:02d}</span>
+          <strong>{escape(str(item.get('label', item.get('title', 'Proof'))))}</strong>
+          <span>{escape(str(item.get('value', item.get('description', ''))))}</span>
+        </div>"""
+        for index, item in enumerate(proof_items, start=1)
+        if isinstance(item, dict)
+    )
+    proof_section = (
+        f"""
+      <section class="proof-strip" aria-label="Engineering proof">
+        {proof_html}
+      </section>"""
+        if proof_html
+        else ""
+    )
 
     return f"""
   <main class="portfolio-page" id="top">
     <section class="workspace">
       <header class="top-bar">
+        <a href="#top" class="brand-lockup" aria-label="{escape(site["brand"])} home">
+          {brand_logo}
+          <span class="brand-copy">
+            <strong>{escape(site["brand"])}</strong>
+            <span>{escape(site["kicker"])}</span>
+          </span>
+        </a>
         <div class="top-bar-left">
           <span class="status-dot"></span>
           {escape(site["status_label"])}
@@ -472,6 +523,7 @@ def _render_shell(projects_html: str, config: dict[str, Any], mode: str) -> str:
       <section class="stats-strip" aria-label="Key stats">
         {stats_html}
       </section>
+      {proof_section}
 
       <section class="capability-strip" aria-label="Capabilities">
         {capabilities_html}
@@ -647,6 +699,8 @@ def _css() -> str:
   --theme-green-hover: #0b7057;
   --theme-blue-hover: #1d4ed8;
   --theme-panel-rgb: 255, 255, 255;
+  --theme-page-top: #f7fbff;
+  --theme-page-bottom: #eef7f3;
 }
 
 /* ===== Dark Theme ===== */
@@ -670,18 +724,22 @@ def _css() -> str:
   --theme-green-hover: #4ee39f;
   --theme-blue-hover: #60bdf5;
   --theme-panel-rgb: 55, 60, 63;
+  --theme-page-top: #252a2d;
+  --theme-page-bottom: #343a3d;
 }
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 100px; }
 body {
   margin: 0;
-  background: var(--theme-bg);
+  background:
+    linear-gradient(180deg, var(--theme-page-top) 0%, var(--theme-bg) 44%, var(--theme-page-bottom) 100%);
   color: var(--theme-ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition: background-color .3s ease, color .3s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 [data-theme="dark"] body {
   background: var(--theme-bg);
@@ -709,7 +767,7 @@ h1, h2, h3, p { margin-top: 0; }
   width: 100%;
   flex: 1;
   margin: 0 auto;
-  padding: 4px 12px 18px;
+  padding: 18px 20px 28px;
 }
 .top-bar {
   position: sticky;
@@ -729,6 +787,49 @@ h1, h2, h3, p { margin-top: 0; }
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   box-shadow: 0 16px 44px var(--theme-shadow), 0 1px 2px rgba(16,24,40,.06);
   transition: box-shadow .35s ease, background .35s ease, border-color .35s ease, transform .35s ease;
+}
+.brand-lockup {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--theme-ink);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.brand-logo,
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.brand-logo {
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgba(16,24,40,.12);
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  background: var(--theme-ink);
+  color: var(--theme-panel);
+  font-weight: 950;
+}
+.brand-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.brand-copy strong {
+  font-size: 14px;
+  line-height: 1.1;
+}
+.brand-copy span {
+  color: var(--theme-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 .top-bar-left,
 .top-bar-right {
@@ -806,7 +907,7 @@ h1, h2, h3, p { margin-top: 0; }
 [data-theme="dark"] .theme-icon-dark  { opacity: 1; transform: scale(1); }
 
 .intro {
-  padding: 38px 8px 24px;
+  padding: 44px 8px 26px;
   max-width: 980px;
 }
 .intro h2 {
@@ -818,27 +919,30 @@ h1, h2, h3, p { margin-top: 0; }
 .intro p:not(.eyebrow) {
   max-width: 720px;
   color: var(--theme-muted);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.65;
 }
 
 /* ===== Stats Strip ===== */
 .stats-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 .stat-item {
+  min-width: 0;
+  min-height: 96px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   align-items: center;
   gap: 2px;
   border: 1px solid var(--theme-line);
   border-radius: 14px;
-  padding: 16px 20px;
+  padding: 15px 14px;
   background: rgba(var(--theme-panel-rgb), .9);
-  box-shadow: 0 14px 34px var(--theme-shadow);
+  box-shadow: 0 16px 40px var(--theme-shadow);
   transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
 }
 .stat-item:hover {
@@ -847,27 +951,77 @@ h1, h2, h3, p { margin-top: 0; }
   box-shadow: 0 8px 24px var(--theme-shadow-hover);
 }
 .stat-value {
-  font-size: 28px;
+  max-width: 100%;
+  font-size: clamp(22px, 3vw, 30px);
   font-weight: 950;
-  color: var(--theme-green);
+  color: var(--theme-ink);
   line-height: 1.1;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .stat-label {
   font-size: 12px;
   font-weight: 750;
   color: var(--theme-muted);
   text-transform: uppercase;
-  letter-spacing: .03em;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.proof-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.proof-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 3px;
+  align-items: start;
+  border: 1px solid var(--theme-line);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(37,99,235,.07), rgba(15,143,110,.05)),
+    rgba(var(--theme-panel-rgb), .92);
+  box-shadow: 0 12px 30px var(--theme-shadow);
+}
+.proof-marker {
+  grid-row: span 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--theme-ink);
+  color: var(--theme-panel);
+  font-size: 11px;
+  font-weight: 900;
+}
+.proof-item strong {
+  min-width: 0;
+  color: var(--theme-ink);
+  font-size: 13px;
+  line-height: 1.2;
+}
+.proof-item span:last-child {
+  min-width: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .capability-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 32px;
+  margin-bottom: 30px;
 }
 .capability-strip div {
-  min-height: 100px;
+  min-height: 96px;
   border: 1px solid var(--theme-line);
   border-radius: 14px;
   padding: 18px;
@@ -887,9 +1041,11 @@ h1, h2, h3, p { margin-top: 0; }
 .capability-strip strong {
   margin-bottom: 8px;
   font-size: 18px;
+  line-height: 1.2;
 }
 .capability-strip span {
   color: var(--theme-muted);
+  line-height: 1.45;
 }
 .projects-section {
   padding-bottom: 40px;
@@ -975,6 +1131,7 @@ h1, h2, h3, p { margin-top: 0; }
 .project-main {
   position: relative;
   z-index: 2;
+  min-width: 0;
 }
 .project-meta {
   display: flex;
@@ -1276,8 +1433,14 @@ h1, h2, h3, p { margin-top: 0; }
 }
 
 @media (max-width: 980px) {
+  .workspace {
+    padding: 14px 14px 22px;
+  }
+  .proof-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .capability-strip {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .project-insight {
     grid-column: 1 / -1;
@@ -1298,50 +1461,140 @@ h1, h2, h3, p { margin-top: 0; }
 }
 @media (max-width: 720px) {
   .workspace {
-    padding: 4px 10px 12px;
+    padding: 10px 10px 16px;
   }
   .top-bar {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: wrap;
     height: auto;
     min-height: 0;
-    padding: 16px;
-    gap: 12px;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .brand-lockup {
+    flex: 1 1 auto;
+  }
+  .brand-logo,
+  .brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .brand-copy span {
+    display: none;
   }
   .top-bar-left,
   .top-bar-right {
     margin-bottom: 0;
   }
   .top-bar-left {
+    order: 3;
+    width: 100%;
+    flex: 1;
     flex-wrap: wrap;
+    justify-content: space-between;
+    font-size: 0;
+    line-height: 1.35;
+  }
+  .top-bar-left::before {
+    content: "AI/ML Engineer";
+    color: var(--theme-muted);
+    font-size: 12px;
+    font-weight: 760;
+  }
+  .top-bar-left .status-dot,
+  .top-bar-left .top-bar-sep {
+    display: none;
+  }
+  .top-bar-contact {
+    font-size: 12px;
   }
   .top-bar-right {
-    width: 100%;
+    width: auto;
     justify-content: flex-end;
-    margin-left: 0;
+    margin-left: auto;
   }
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
   }
   .intro {
-    padding: 40px 0 30px;
+    padding: 30px 0 20px;
   }
   .intro h2 {
-    font-size: 42px;
+    font-size: clamp(30px, 10vw, 42px);
+    line-height: 1.03;
+    margin-bottom: 14px;
+  }
+  .intro p:not(.eyebrow) {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .stats-strip {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .stat-item {
+    min-height: 76px;
+    border-radius: 12px;
+    padding: 12px 8px;
+  }
+  .stat-value {
+    font-size: clamp(19px, 6vw, 24px);
+  }
+  .stat-label {
+    font-size: 10px;
+  }
+  .proof-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .proof-item {
+    padding: 11px;
+  }
+  .capability-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .capability-strip div {
+    min-height: 0;
+    padding: 14px;
   }
   .project-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: 40px minmax(0, 1fr);
     align-items: start;
-    padding: 20px;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 14px;
     transform: none;
   }
   .project-card:hover {
     transform: translateY(-3px);
   }
   .project-links {
+    grid-column: 1 / -1;
+    min-width: 0;
     justify-content: flex-start;
-    margin-top: 12px;
+    margin-top: 4px;
+  }
+  .project-insight {
+    grid-column: 1 / -1;
+    padding: 12px;
+  }
+  .project-number {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  .project-card h3 {
+    font-size: 17px;
+  }
+  .project-card p {
+    font-size: 12px;
+    line-height: 1.45;
   }
   .insight-grid {
     grid-template-columns: 1fr;

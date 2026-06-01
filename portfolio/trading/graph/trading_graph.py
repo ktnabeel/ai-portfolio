@@ -35,8 +35,9 @@ from ..agents.risk_sentiment_agent import RiskSentimentAgent
 from ..agents.regime_agent import RegimeAgent
 from ..agents.decision_agent import DecisionAgent
 from ..agents.execution_agent import ExecutionAgent
+from ..mcp.trading_server import MCPTradingServer
 from ..options.polygon_client import fetch_option_chain
-from ..models import OptionStrategy
+from ..models import OptionChain, OptionContract, OptionStrategy
 from .state import TradingState
 
 
@@ -81,6 +82,53 @@ def _is_deterministic_mode(state: TradingState) -> bool:
         return False
     env_var = "OPENAI_API_KEY" if provider == "openai" else "ANTHROPIC_API_KEY"
     return not os.environ.get(env_var, "")
+
+
+def _option_chain_from_mcp_data(data: Any) -> tuple[OptionChain, dict[str, Any]]:
+    """Validate a read-only MCP option-chain payload into the existing model."""
+    if not isinstance(data, dict):
+        raise ValueError("MCP option-chain payload was not an object")
+
+    calls = [
+        OptionContract(**contract)
+        for contract in data.get("calls", [])
+        if isinstance(contract, dict)
+    ]
+    puts = [
+        OptionContract(**contract)
+        for contract in data.get("puts", [])
+        if isinstance(contract, dict)
+    ]
+    chain = OptionChain(
+        symbol=str(data["symbol"]).upper(),
+        underlying_price=float(data["underlying_price"]),
+        expiration_dates=list(data.get("expiration_dates", [])),
+        calls=calls,
+        puts=puts,
+    )
+    if not chain.calls and not chain.puts:
+        raise ValueError("MCP option-chain payload had no contracts")
+
+    metadata = {
+        "source": data.get("source", "yfinance"),
+        "freshness": data.get("freshness", ""),
+        "is_realtime": bool(data.get("is_realtime", False)),
+    }
+    if data.get("warning"):
+        metadata["warning"] = data["warning"]
+    return chain, metadata
+
+
+def _provider_log_suffix(metadata: dict[str, Any]) -> str:
+    source = metadata.get("source", "unknown")
+    freshness = metadata.get("freshness", "")
+    realtime = "realtime" if metadata.get("is_realtime") else "delayed/best effort"
+    suffix = f" | Source: {source} ({realtime})"
+    if freshness:
+        suffix += f" | Freshness: {freshness}"
+    if metadata.get("warning"):
+        suffix += f" | Warning: {metadata['warning']}"
+    return suffix
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -154,15 +202,46 @@ def _node_regime(state: TradingState) -> dict[str, Any]:
 
 def _node_fetch_chain(state: TradingState) -> dict[str, Any]:
     """Fetch options chain for the security."""
+    symbol = state["symbol"]
+    mcp_error = ""
     try:
-        symbol = state["symbol"]
+        response = MCPTradingServer().call_tool("get_option_chain", {"symbol": symbol})
+        if response.success and response.data:
+            chain, metadata = _option_chain_from_mcp_data(response.data)
+            return {
+                "options_chain": chain,
+                "options_chain_metadata": metadata,
+                "stage": "options_chain",
+                "log": [
+                    f"[Options Chain] {len(chain.calls)} calls, {len(chain.puts)} puts | "
+                    f"Underlying: ${chain.underlying_price:.2f}"
+                    f"{_provider_log_suffix(metadata)}"
+                ],
+            }
+        mcp_error = response.error or "MCP returned incomplete option-chain data."
+    except Exception as e:
+        mcp_error = str(e)
+
+    try:
         chain = fetch_option_chain(symbol)
+        fallback_source = "polygon" if os.environ.get("POLYGON_API_KEY") else "yfinance"
+        metadata = {
+            "source": fallback_source,
+            "freshness": "",
+            "is_realtime": False,
+            "warning": (
+                "Direct provider fallback used after MCP option-chain failure; "
+                f"provider may have used synthetic data. MCP error: {mcp_error}"
+            ),
+        }
         return {
             "options_chain": chain,
+            "options_chain_metadata": metadata,
             "stage": "options_chain",
             "log": [
                 f"[Options Chain] {len(chain.calls)} calls, {len(chain.puts)} puts | "
                 f"Underlying: ${chain.underlying_price:.2f}"
+                f"{_provider_log_suffix(metadata)}"
             ],
         }
     except Exception as e:
@@ -351,6 +430,7 @@ def run_trading_workflow(
         "sentiment": None,
         "regime": None,
         "options_chain": None,
+        "options_chain_metadata": {},
         "strategy": None,
         "execution": None,
         "error": "",

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-section app-window">
+  <div class="app-window-header">
+    <div>
+      <p class="eyebrow">Insurance AI</p>
+      <h1>Agentic Insurance Underwriting</h1>
+      <p class="page-subtitle">Extract application data, assess risk factors, and generate structured underwriting decisions.</p>
+    </div>
+    <span class="app-window-badge">Risk Engine</span>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="showTab('single')">Single Application</button>
+    <button class="tab-btn" onclick="showTab('batch')">Batch Processing</button>
+  </div>
+
+  <div id="tab-single" class="tab-panel active floating-panel">
+    <form method="post" action="/underwriting">
+      <input type="hidden" name="mode" value="single">
+      <label class="form-label" for="application_text">Application Details</label>
+      <textarea class="form-textarea" id="application_text" name="application_text" rows="11" placeholder="Applicant: Sarah Chen&#10;Age: 42. Occupation: Commercial airline pilot.&#10;Annual income: $180,000. Seeking $2,000,000 term life coverage.">{{ application_text|default('') }}</textarea>
+      <button class="btn-primary btn-compact" type="submit">Run Assessment</button>
+    </form>
+  </div>
+
+  <div id="tab-batch" class="tab-panel floating-panel">
+    <form method="post" action="/underwriting">
+      <input type="hidden" name="mode" value="batch">
+      <label class="form-label" for="applications_batch">Applications Batch</label>
+      <textarea class="form-textarea" id="applications_batch" name="application_text" rows="11" placeholder="Separate applications with a blank line or ---">{{ application_text|default('') }}</textarea>
+      <button class="btn-primary btn-compact" type="submit">Process Batch</button>
+    </form>
+  </div>
+
+  {% if result_html %}<div class="results-area">{{ result_html|safe }}</div>{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+function showTab(t){var panels=document.querySelectorAll('.tab-panel'),buttons=document.querySelectorAll('.tab-btn');panels.forEach(function(p){p.classList.remove('active')});buttons.forEach(function(b){b.classList.remove('active')});document.getElementById('tab-'+t).classList.add('active');event.target.classList.add('active')}
+{% if mode == 'batch' %}showTab('batch');{% endif %}
+</script>
+{% endblock %}

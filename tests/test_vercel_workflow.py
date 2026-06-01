@@ -95,12 +95,11 @@ def test_homepage_renders_workflow() -> None:
     home = client.get("/")
     assert home.status_code == 200
     assert "Workflow Lab" in home.text
-    assert "Agent decisions first. Execution second." in home.text
     assert "Agent Pipeline Flow" in home.text
-    assert "Agent Deep Dive" in home.text
-    assert "CNN Fear &amp; Greed" in home.text
-    assert "Security rationale" in home.text
-    assert "Human approval" in home.text
+    assert "Agent Output" in home.text
+    assert "Agent outputs will appear here after analysis." in home.text
+    assert "Start an analysis" in home.text
+    assert "Open approval screen" not in home.text
 
 
 def test_analysis_approval_and_execution_flow() -> None:
@@ -108,10 +107,17 @@ def test_analysis_approval_and_execution_flow() -> None:
 
     analysis = client.post("/analyze", data={"symbol": "AAPL"})
     assert analysis.status_code == 200
+    assert "Agent Pipeline Flow" in analysis.text
     assert "Decision Agent" in analysis.text
-    assert "Approve and continue" in analysis.text
+    assert "Agent Output" in analysis.text
+    assert "Approve" in analysis.text
+    assert "Human Review" in analysis.text
+    assert "Awaiting Approval" in analysis.text
+    assert "Open approval screen" not in analysis.text
     assert "Price is above EMA 8 and EMA 21" in analysis.text
     assert "Breakout is backed by heavier-than-average volume" in analysis.text
+    assert "CNN Fear &amp; Greed" in analysis.text
+    assert "EMA 8" in analysis.text
 
     payload = _extract_payload(analysis.text)
     state = json.loads(payload)
@@ -132,8 +138,10 @@ def test_analysis_approval_and_execution_flow() -> None:
     assert 'action="/execute"' in approval.text
     assert "Execute trade" in approval.text
     assert "Approval captured" in approval.text
+    assert "Agent Pipeline Flow" in approval.text
     assert "CNN Fear &amp; Greed" in approval.text
     assert "EMA 8" in approval.text
+    assert "Approval screen" not in approval.text
 
     executed = client.post(
         "/execute",
@@ -146,6 +154,8 @@ def test_analysis_approval_and_execution_flow() -> None:
     assert "Trade executed" in executed.text
     assert "Execution Agent" in executed.text
     assert "Security rationale" in executed.text
+    assert "Agent Pipeline Flow" in executed.text
+    assert "Execution screen" not in executed.text
 
     account = client.get("/api/account")
     assert account.status_code == 200
